@@ -75,7 +75,7 @@ class DeveloperToolsController
                 RateLimit::incrementAnonymousScan($auth['ip_address']);
             }
 
-            Response::success('Regex test completed', $result);
+            Response::success($result);
 
         } catch (\Exception $e) {
             Response::error('Regex error: ' . $e->getMessage(), 400);
@@ -150,7 +150,7 @@ class DeveloperToolsController
                 RateLimit::incrementAnonymousScan($auth['ip_address']);
             }
 
-            Response::success('Data validation completed', $result);
+            Response::success($result);
 
         } catch (\Exception $e) {
             Response::error($e->getMessage(), 400);
@@ -228,7 +228,7 @@ class DeveloperToolsController
             RateLimit::incrementAnonymousScan($auth['ip_address']);
         }
 
-        Response::success('Secret scan completed', [
+        Response::success([
             'secrets_found' => count($secrets),
             'secrets' => $secrets,
             'risk_level' => count($secrets) === 0 ? 'low' : (count($secrets) < 5 ? 'medium' : 'high')
@@ -274,7 +274,7 @@ class DeveloperToolsController
             RateLimit::incrementAnonymousScan($auth['ip_address']);
         }
 
-        Response::success('Hashes generated', [
+        Response::success([
             'hashes' => $hashes,
             'input_length' => strlen($text)
         ]);
@@ -296,39 +296,35 @@ class DeveloperToolsController
         }
 
         $input = json_decode(file_get_contents('php://input'), true);
-        $text = $input['text'] ?? '';
-        $action = $input['action'] ?? 'encode';
+        $text = trim($input['text'] ?? '');
+        $operation = $input['operation'] ?? 'encode';
 
-        if (empty($text)) {
+        if ($text === '') {
             Response::error('Text is required', 400);
             return;
         }
 
-        $result = [];
+        $result = '';
+        $inputLength = strlen($text);
 
-        if ($action === 'encode') {
-            $result['encoded'] = urlencode($text);
-            $result['encoded_component'] = rawurlencode($text);
+        if ($operation === 'encode') {
+            $result = urlencode($text);
         } else {
-            $result['decoded'] = urldecode($text);
-            $result['decoded_component'] = rawurldecode($text);
-
-            // Parse URL if it looks like a URL
-            if (filter_var($text, FILTER_VALIDATE_URL)) {
-                $parsed = parse_url($text);
-                $result['parsed'] = $parsed;
-                if (isset($parsed['query'])) {
-                    parse_str($parsed['query'], $params);
-                    $result['query_params'] = $params;
-                }
-            }
+            $result = urldecode($text);
         }
 
         if (!$auth['authenticated']) {
             RateLimit::incrementAnonymousScan($auth['ip_address']);
         }
 
-        Response::success('URL operation completed', $result);
+        Response::success([
+            'result' => $result,
+            'details' => [
+                'operation' => $operation,
+                'input_length' => $inputLength,
+                'output_length' => strlen($result)
+            ]
+        ]);
     }
 
     /**
@@ -399,5 +395,362 @@ class DeveloperToolsController
         if (in_array($type, $critical)) return 'critical';
         if (in_array($type, $high)) return 'high';
         return 'medium';
+    }
+
+    /**
+     * Validate PGP keys and signatures
+     */
+    public function validatePGP(): void
+    {
+        $auth = Auth::optionalAuth();
+
+        if (!$auth['authenticated']) {
+            $scanCheck = RateLimit::checkAnonymousScan($auth['ip_address'], 0);
+            if (!$scanCheck['allowed']) {
+                Response::error($scanCheck['message'], 429);
+                return;
+            }
+        }
+
+        $input = json_decode(file_get_contents('php://input'), true);
+        $publicKey = $input['public_key'] ?? '';
+        $operation = $input['operation'] ?? 'validate_key';
+
+        if (empty($publicKey)) {
+            Response::error('PGP public key is required', 400);
+            return;
+        }
+
+        // Basic PGP format validation
+        $isValidFormat = preg_match('/-----BEGIN PGP PUBLIC KEY BLOCK-----.*-----END PGP PUBLIC KEY BLOCK-----/s', $publicKey);
+
+        if (!$isValidFormat) {
+            Response::error('Invalid PGP key format', 400, [
+                'is_valid' => false,
+                'error' => 'Key must be in PGP armor format'
+            ]);
+            return;
+        }
+
+        // For now, return basic validation
+        // Full PGP validation would require GnuPG extension or external library
+        $result = [
+            'is_valid' => true,
+            'format' => 'PGP Armor',
+            'message' => 'Basic format validation passed. Full cryptographic validation requires GPG extension.'
+        ];
+
+        if (!$auth['authenticated']) {
+            RateLimit::incrementAnonymousScan($auth['ip_address']);
+        }
+
+        Response::success($result);
+    }
+
+    /**
+     * Validate and compare hashes
+     */
+    public function validateHash(): void
+    {
+        $auth = Auth::optionalAuth();
+
+        if (!$auth['authenticated']) {
+            $scanCheck = RateLimit::checkAnonymousScan($auth['ip_address'], 0);
+            if (!$scanCheck['allowed']) {
+                Response::error($scanCheck['message'], 429);
+                return;
+            }
+        }
+
+        $input = json_decode(file_get_contents('php://input'), true);
+        $hash = $input['hash'] ?? ($input['hash1'] ?? '');
+        $hash2 = $input['hash2'] ?? '';
+        $operation = $input['operation'] ?? 'identify';
+        $hashType = $input['hash_type'] ?? '';
+        $originalText = $input['original_text'] ?? '';
+
+        if (empty($hash)) {
+            Response::error('Hash value is required', 400);
+            return;
+        }
+
+        // Identify hash type based on length
+        $hashLength = strlen($hash);
+        $possibleTypes = [];
+
+        switch ($hashLength) {
+            case 32:
+                $possibleTypes[] = 'MD5';
+                break;
+            case 40:
+                $possibleTypes[] = 'SHA-1';
+                break;
+            case 64:
+                $possibleTypes[] = 'SHA-256';
+                $possibleTypes[] = 'SHA3-256';
+                $possibleTypes[] = 'BLAKE2s';
+                break;
+            case 96:
+                $possibleTypes[] = 'SHA-384';
+                break;
+            case 128:
+                $possibleTypes[] = 'SHA-512';
+                $possibleTypes[] = 'SHA3-512';
+                $possibleTypes[] = 'BLAKE2b';
+                break;
+        }
+
+        $result = [];
+
+        if ($operation === 'identify') {
+            $result = [
+                'hash' => $hash,
+                'length' => $hashLength,
+                'bits' => $hashLength * 4,
+                'possible_types' => $possibleTypes
+            ];
+        } elseif ($operation === 'compare' && !empty($hash2)) {
+            $result = [
+                'hash1' => $hash,
+                'hash2' => $hash2,
+                'match' => $hash === $hash2,
+                'case_sensitive' => $hash === $hash2,
+                'case_insensitive' => strtolower($hash) === strtolower($hash2)
+            ];
+        } elseif ($operation === 'validate') {
+            $isValid = preg_match('/^[a-f0-9]+$/i', $hash);
+            $result = [
+                'is_valid' => $isValid,
+                'hash_type' => $hashType ?: ($possibleTypes[0] ?? 'unknown'),
+                'expected_length' => $hashLength,
+                'actual_length' => $hashLength,
+                'format' => $isValid ? 'hexadecimal' : 'invalid'
+            ];
+
+            // If original text provided, compute and compare
+            if (!empty($originalText) && !empty($hashType)) {
+                $algo = strtolower(str_replace('-', '', $hashType));
+                if (in_array($algo, hash_algos())) {
+                    $computed = hash($algo, $originalText);
+                    $result['computed_hash'] = $computed;
+                    $result['matches'] = strtolower($computed) === strtolower($hash);
+                }
+            }
+        }
+
+        if (!$auth['authenticated']) {
+            RateLimit::incrementAnonymousScan($auth['ip_address']);
+        }
+
+        Response::success($result);
+    }
+
+    /**
+     * Base64 encode/decode
+     */
+    public function base64Encode(): void
+    {
+        $auth = Auth::optionalAuth();
+
+        if (!$auth['authenticated']) {
+            $scanCheck = RateLimit::checkAnonymousScan($auth['ip_address'], 0);
+            if (!$scanCheck['allowed']) {
+                Response::error($scanCheck['message'], 429);
+                return;
+            }
+        }
+
+        $input = json_decode(file_get_contents('php://input'), true);
+        $operation = $input['operation'] ?? 'encode';
+        $inputData = $input['input'] ?? '';
+        $urlSafe = $input['url_safe'] ?? false;
+        $lineBreak = $input['line_break'] ?? 'none';
+
+        if ($inputData === '') {
+            Response::error('Input is required', 400);
+            return;
+        }
+
+        try {
+            $result = [];
+
+            if ($operation === 'encode') {
+                // Encode text to Base64
+                $encoded = base64_encode($inputData);
+
+                // URL-safe encoding
+                if ($urlSafe) {
+                    $encoded = strtr($encoded, '+/', '-_');
+                    $encoded = rtrim($encoded, '=');
+                }
+
+                // Add line breaks
+                if ($lineBreak !== 'none') {
+                    $chunkSize = (int)$lineBreak;
+                    $encoded = chunk_split($encoded, $chunkSize, "\n");
+                    $encoded = rtrim($encoded);
+                }
+
+                $result = [
+                    'encoded' => $encoded,
+                    'statistics' => [
+                        'input_size' => strlen($inputData),
+                        'output_size' => strlen($encoded),
+                        'size_increase' => $this->calculatePercentageIncrease(strlen($inputData), strlen($encoded)),
+                        'encoding_type' => $urlSafe ? 'URL-Safe' : 'Standard'
+                    ]
+                ];
+
+            } elseif ($operation === 'decode') {
+                // Decode Base64 to text
+                $toDecode = $inputData;
+
+                // URL-safe decoding
+                if ($urlSafe) {
+                    $toDecode = strtr($toDecode, '-_', '+/');
+                    // Add padding if needed
+                    $remainder = strlen($toDecode) % 4;
+                    if ($remainder) {
+                        $toDecode .= str_repeat('=', 4 - $remainder);
+                    }
+                }
+
+                // Remove any whitespace
+                $toDecode = preg_replace('/\s+/', '', $toDecode);
+
+                // Validate Base64
+                $isValid = $this->isValidBase64($toDecode);
+
+                if (!$isValid) {
+                    Response::error('Invalid Base64 string', 400);
+                    return;
+                }
+
+                $decoded = base64_decode($toDecode, true);
+
+                if ($decoded === false) {
+                    Response::error('Failed to decode Base64 string', 400);
+                    return;
+                }
+
+                // Check if decoded data is an image
+                $isImage = false;
+                $mimeType = null;
+                $dataUrl = null;
+
+                $finfo = finfo_open(FILEINFO_MIME_TYPE);
+                if ($finfo) {
+                    $mimeType = finfo_buffer($finfo, $decoded);
+                    finfo_close($finfo);
+
+                    if (strpos($mimeType, 'image/') === 0) {
+                        $isImage = true;
+                        $dataUrl = 'data:' . $mimeType . ';base64,' . base64_encode($decoded);
+                    }
+                }
+
+                $result = [
+                    'decoded' => $decoded,
+                    'is_image' => $isImage,
+                    'mime_type' => $mimeType,
+                    'data_url' => $dataUrl,
+                    'is_valid' => true,
+                    'statistics' => [
+                        'input_size' => strlen($toDecode),
+                        'output_size' => strlen($decoded),
+                        'size_decrease' => $this->calculatePercentageDecrease(strlen($toDecode), strlen($decoded))
+                    ]
+                ];
+
+            } elseif ($operation === 'encode_file') {
+                // Encode file (already in base64 from FileReader)
+                $filename = $input['filename'] ?? 'file';
+                $mimeType = $input['mime_type'] ?? 'application/octet-stream';
+
+                // The input is already base64 from the frontend
+                $encoded = $inputData;
+
+                // Add line breaks
+                if ($lineBreak !== 'none') {
+                    $chunkSize = (int)$lineBreak;
+                    $encoded = chunk_split($encoded, $chunkSize, "\n");
+                    $encoded = rtrim($encoded);
+                }
+
+                $dataUrl = 'data:' . $mimeType . ';base64,' . $encoded;
+
+                $result = [
+                    'encoded' => $encoded,
+                    'data_url' => $dataUrl,
+                    'filename' => $filename,
+                    'mime_type' => $mimeType,
+                    'statistics' => [
+                        'input_size' => strlen(base64_decode($inputData)),
+                        'output_size' => strlen($encoded),
+                        'size_increase' => $this->calculatePercentageIncrease(
+                            strlen(base64_decode($inputData)),
+                            strlen($encoded)
+                        )
+                    ]
+                ];
+            }
+
+            if (!$auth['authenticated']) {
+                RateLimit::incrementAnonymousScan($auth['ip_address']);
+            }
+
+            Response::success($result);
+
+        } catch (\Exception $e) {
+            Response::error('Base64 processing error: ' . $e->getMessage(), 400);
+        }
+    }
+
+    /**
+     * Validate Base64 string
+     */
+    private function isValidBase64(string $string): bool
+    {
+        // Check if string contains only valid Base64 characters
+        if (!preg_match('/^[a-zA-Z0-9\/\r\n+]*={0,2}$/', $string)) {
+            return false;
+        }
+
+        // Try to decode
+        $decoded = base64_decode($string, true);
+        if ($decoded === false) {
+            return false;
+        }
+
+        // Re-encode and compare
+        if (base64_encode($decoded) !== preg_replace('/\s+/', '', $string)) {
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * Calculate percentage increase
+     */
+    private function calculatePercentageIncrease(int $original, int $new): string
+    {
+        if ($original === 0) {
+            return '0%';
+        }
+        $increase = (($new - $original) / $original) * 100;
+        return round($increase, 2) . '%';
+    }
+
+    /**
+     * Calculate percentage decrease
+     */
+    private function calculatePercentageDecrease(int $original, int $new): string
+    {
+        if ($original === 0) {
+            return '0%';
+        }
+        $decrease = (($original - $new) / $original) * 100;
+        return round($decrease, 2) . '%';
     }
 }

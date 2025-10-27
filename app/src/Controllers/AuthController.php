@@ -8,6 +8,7 @@ use VeriBits\Utils\Database;
 use VeriBits\Utils\Config;
 use VeriBits\Utils\Logger;
 use VeriBits\Utils\RateLimit;
+use VeriBits\Utils\Request;
 
 class AuthController {
     public function register(): void {
@@ -18,7 +19,20 @@ class AuthController {
             return;
         }
 
-        $body = json_decode(file_get_contents('php://input'), true) ?? [];
+        // CRITICAL WORKAROUND: Read php://input directly
+        $rawBody = @file_get_contents('php://input') ?: '';
+        $rawBody = ltrim($rawBody, "\xEF\xBB\xBF");
+        $rawBody = trim($rawBody);
+
+        // FIX: Handle curl/shell escaping quirks
+        $rawBody = preg_replace('/\\\\([^"\\/bfnrtu])/', '$1', $rawBody);
+
+        $body = json_decode($rawBody, true) ?: [];
+
+        if (empty($body)) {
+            $body = Request::getJsonBody();
+        }
+
         $validator = new Validator($body);
 
         $validator->required('email')->email('email')->string('email', 5, 320)
@@ -92,7 +106,53 @@ class AuthController {
             return;
         }
 
-        $body = json_decode(file_get_contents('php://input'), true) ?? [];
+        // CRITICAL WORKAROUND: Read php://input directly BEFORE Request helper
+        // For some reason Request::getJsonBody() returns empty for THIS endpoint only
+        // This direct read works reliably in production
+        $rawBody = @file_get_contents('php://input') ?: '';
+        error_log("DEBUG [AuthController::login]: Direct php://input length = " . strlen($rawBody));
+        error_log("DEBUG [AuthController::login]: Direct php://input = " . substr($rawBody, 0, 200));
+
+        // Check global cache
+        $globalBody = $GLOBALS['__RAW_POST_BODY__'] ?? '';
+        error_log("DEBUG [AuthController::login]: Global cache length = " . strlen($globalBody));
+        error_log("DEBUG [AuthController::login]: Global cache = " . substr($globalBody, 0, 200));
+
+        $rawBody = ltrim($rawBody, "\xEF\xBB\xBF"); // Strip BOM
+        $rawBody = trim($rawBody);
+
+        // FIX: Handle curl/shell escaping quirks like \! which creates invalid JSON
+        // Replace invalid escape sequences before JSON decode
+        $rawBody = preg_replace('/\\\\([^"\\/bfnrtu])/', '$1', $rawBody);
+
+        $body = json_decode($rawBody, true);
+
+        if ($body === null && json_last_error() !== JSON_ERROR_NONE) {
+            error_log("DEBUG [AuthController::login]: JSON DECODE FAILED!");
+            error_log("DEBUG [AuthController::login]: JSON error: " . json_last_error_msg());
+            error_log("DEBUG [AuthController::login]: JSON error code: " . json_last_error());
+            error_log("DEBUG [AuthController::login]: Raw body hex: " . bin2hex($rawBody));
+            $body = [];
+        } else if (!is_array($body)) {
+            $body = [];
+        }
+
+        error_log("DEBUG [AuthController::login]: Decoded body = " . json_encode($body));
+
+        // Fallback to Request helper if direct read fails
+        if (empty($body)) {
+            error_log("DEBUG [AuthController::login]: Body empty, trying Request helper");
+            $body = Request::getJsonBody();
+            error_log("DEBUG [AuthController::login]: Request helper returned = " . json_encode($body));
+        }
+
+        // Also try using the global cache
+        if (empty($body) && !empty($globalBody)) {
+            error_log("DEBUG [AuthController::login]: Trying global cache");
+            $body = json_decode(ltrim(trim($globalBody), "\xEF\xBB\xBF"), true) ?: [];
+            error_log("DEBUG [AuthController::login]: Global cache decoded = " . json_encode($body));
+        }
+
         $validator = new Validator($body);
 
         $validator->required('email')->email('email')
@@ -177,7 +237,7 @@ class AuthController {
             return;
         }
 
-        $body = json_decode(file_get_contents('php://input'), true) ?? [];
+        $body = Request::getJsonBody();
         $validator = new Validator($body);
 
         $validator->required('user')->string('user', 1, 100);

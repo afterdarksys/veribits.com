@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VeriBits API Documentation</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            line-height: 1.6;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+        }
+        .section {
+            background: white;
+            padding: 25px;
+            margin-bottom: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h1 { margin: 0; }
+        h2 { color: #667eea; border-bottom: 2px solid #667eea; padding-bottom: 10px; }
+        code {
+            background: #f4f4f4;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+        }
+        pre {
+            background: #2d2d2d;
+            color: #f8f8f2;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+        }
+        .endpoint {
+            background: #f9f9f9;
+            border-left: 4px solid #667eea;
+            padding: 15px;
+            margin: 15px 0;
+        }
+        .method {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-weight: bold;
+            margin-right: 10px;
+        }
+        .get { background: #61affe; color: white; }
+        .post { background: #49cc90; color: white; }
+        .put { background: #fca130; color: white; }
+        .delete { background: #f93e3e; color: white; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>VeriBits API Documentation</h1>
+        <p>Comprehensive verification and security tooling platform</p>
+    </div>
+
+    <div class="section">
+        <h2>Getting Started</h2>
+        <p>The VeriBits API provides programmatic access to all verification tools. Authentication is required for most endpoints.</p>
+
+        <h3>Base URL</h3>
+        <code>https://api.veribits.com/api/v1</code>
+
+        <h3>Authentication</h3>
+        <p>Include your JWT bearer token in the Authorization header:</p>
+        <pre>Authorization: Bearer YOUR_JWT_TOKEN</pre>
+
+        <p>Or use an API key in the X-API-Key header:</p>
+        <pre>X-API-Key: vb_your_api_key_here</pre>
+    </div>
+
+    <div class="section">
+        <h2>Authentication Endpoints</h2>
+
+        <div class="endpoint">
+            <span class="method post">POST</span>
+            <code>/auth/register</code>
+            <p>Register a new user account</p>
+        </div>
+
+        <div class="endpoint">
+            <span class="method post">POST</span>
+            <code>/auth/login</code>
+            <p>Login and receive JWT token</p>
+        </div>
+
+        <div class="endpoint">
+            <span class="method post">POST</span>
+            <code>/auth/logout</code>
+            <p>Logout and invalidate current token</p>
+        </div>
+
+        <div class="endpoint">
+            <span class="method get">GET</span>
+            <code>/auth/profile</code>
+            <p>Get current user profile</p>
+        </div>
+    </div>
+
+    <div class="section">
+        <h2>Verification Tools</h2>
+
+        <div class="endpoint">
+            <span class="method post">POST</span>
+            <code>/verify/file</code>
+            <p>Verify file integrity and signatures</p>
+        </div>
+
+        <div class="endpoint">
+            <span class="method post">POST</span>
+            <code>/verify/malware</code>
+            <p>Scan files for malware (requires authentication)</p>
+        </div>
+
+        <div class="endpoint">
+            <span class="method post">POST</span>
+            <code>/ssl/validate</code>
+            <p>Validate SSL/TLS certificates</p>
+        </div>
+
+        <div class="endpoint">
+            <span class="method post">POST</span>
+            <code>/dns/check</code>
+            <p>Check DNS records and configuration</p>
+        </div>
+
+        <div class="endpoint">
+            <span class="method post">POST</span>
+            <code>/crypto/validate</code>
+            <p>Validate cryptocurrency addresses</p>
+        </div>
+    </div>
+
+    <div class="section">
+        <h2>Keystore Tools</h2>
+
+        <div class="endpoint">
+            <span class="method post">POST</span>
+            <code>/tools/keystore/jks-to-pkcs12</code>
+            <p>Convert JKS keystore to PKCS12 format</p>
+        </div>
+
+        <div class="endpoint">
+            <span class="method post">POST</span>
+            <code>/tools/keystore/pkcs12-to-jks</code>
+            <p>Convert PKCS12 keystore to JKS format</p>
+        </div>
+
+        <div class="endpoint">
+            <span class="method post">POST</span>
+            <code>/tools/keystore/extract</code>
+            <p>Extract certificates and keys from PKCS12/PKCS7</p>
+        </div>
+    </div>
+
+    <div class="section">
+        <h2>Audit Logs</h2>
+
+        <div class="endpoint">
+            <span class="method get">GET</span>
+            <code>/audit/logs</code>
+            <p>Get audit logs for authenticated user</p>
+            <p><strong>Query Parameters:</strong></p>
+            <ul>
+                <li><code>limit</code> - Number of logs to return (max 1000, default 100)</li>
+                <li><code>offset</code> - Pagination offset</li>
+                <li><code>operation</code> - Filter by operation type</li>
+                <li><code>start_date</code> - Filter by start date (YYYY-MM-DD)</li>
+                <li><code>end_date</code> - Filter by end date (YYYY-MM-DD)</li>
+            </ul>
+        </div>
+
+        <div class="endpoint">
+            <span class="method get">GET</span>
+            <code>/audit/stats</code>
+            <p>Get audit statistics for user</p>
+            <p><strong>Query Parameters:</strong></p>
+            <ul>
+                <li><code>period</code> - Time period (7 days, 30 days, 90 days, 1 year)</li>
+            </ul>
+        </div>
+
+        <div class="endpoint">
+            <span class="method get">GET</span>
+            <code>/audit/export</code>
+            <p>Export audit logs as CSV</p>
+        </div>
+
+        <div class="endpoint">
+            <span class="method get">GET</span>
+            <code>/audit/operation-types</code>
+            <p>Get list of all operation types for filtering</p>
+        </div>
+    </div>
+
+    <div class="section">
+        <h2>Rate Limits</h2>
+        <p>Anonymous users: 25 requests/day for basic operations, 250 file scans (50MB max) over 30 days</p>
+        <p>Free tier: 100 requests/day, 1000/month</p>
+        <p>Paid tiers: Higher limits based on plan</p>
+
+        <div class="endpoint">
+            <span class="method get">GET</span>
+            <code>/limits/anonymous</code>
+            <p>Check current rate limits for anonymous users</p>
+        </div>
+    </div>
+
+    <div class="section">
+        <h2>Error Responses</h2>
+        <p>All errors return JSON with the following format:</p>
+        <pre>{
+  "error": "Error message",
+  "status": 400,
+  "details": {}
+}</pre>
+
+        <h3>HTTP Status Codes</h3>
+        <ul>
+            <li><code>200</code> - Success</li>
+            <li><code>400</code> - Bad Request</li>
+            <li><code>401</code> - Unauthorized</li>
+            <li><code>403</code> - Forbidden</li>
+            <li><code>404</code> - Not Found</li>
+            <li><code>429</code> - Rate Limit Exceeded</li>
+            <li><code>500</code> - Internal Server Error</li>
+        </ul>
+    </div>
+
+    <div class="section">
+        <h2>Support</h2>
+        <p>For API support, contact: <a href="mailto:support@veribits.com">support@veribits.com</a></p>
+        <p>Documentation: <a href="https://docs.veribits.com">https://docs.veribits.com</a></p>
+    </div>
+</body>
+</html>

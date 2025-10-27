@@ -375,7 +375,7 @@ resource "aws_ecs_task_definition" "api" {
 
   container_definitions = jsonencode([
     {
-      name      = "api"
+      name      = "veribits-api"
       image     = "${aws_ecr_repository.api.repository_url}:latest"
       essential = true
 
@@ -417,7 +417,7 @@ resource "aws_ecs_task_definition" "api" {
 
 # ECS Service
 resource "aws_ecs_service" "api" {
-  name            = "veribits-api-svc"
+  name            = "veribits-api"
   cluster         = aws_ecs_cluster.main.id
   task_definition = aws_ecs_task_definition.api.arn
   desired_count   = 2
@@ -426,12 +426,12 @@ resource "aws_ecs_service" "api" {
   network_configuration {
     subnets          = local.private_subnet_ids
     security_groups  = [aws_security_group.ecs_sg.id]
-    assign_public_ip = true
+    assign_public_ip = false
   }
 
   load_balancer {
     target_group_arn = aws_lb_target_group.app_tg.arn
-    container_name   = "api"
+    container_name   = "veribits-api"
     container_port   = 80
   }
 

@@ -115,30 +115,82 @@ class RateLimit {
         if (self::isWhitelisted($identifier)) {
             return true;
         }
-        // Check if Redis extension is available
-        if (!class_exists('Redis')) {
-            Logger::warning('Redis extension not available, rate limiting disabled');
-            return true; // Fail open for non-critical rate limiting
+
+        // Try Redis first
+        if (class_exists('Redis')) {
+            try {
+                return self::checkRedis($identifier, $maxRequests, $windowSize);
+            } catch (\Exception $e) {
+                Logger::warning('Redis rate limiting failed, falling back to database', [
+                    'identifier' => $identifier,
+                    'error' => $e->getMessage()
+                ]);
+                // Fall through to database fallback
+            }
         }
 
+        // Fallback to database-based rate limiting
+        return self::checkDatabase($identifier, $maxRequests, $windowSize);
+    }
+
+    /**
+     * Redis-based rate limiting (preferred method)
+     */
+    private static function checkRedis(string $identifier, int $maxRequests, int $windowSize): bool {
         $key = "rate_limit:$identifier";
         $now = time();
         $windowStart = $now - $windowSize;
 
+        $redis = Redis::connect();
+
+        $redis->multi();
+        $redis->zRemRangeByScore($key, 0, $windowStart);
+        $redis->zCard($key);
+        $redis->zAdd($key, $now, $now . ':' . uniqid());
+        $redis->expire($key, $windowSize);
+        $result = $redis->exec();
+
+        $currentRequests = $result[1] ?? 0;
+
+        if ($currentRequests >= $maxRequests) {
+            Logger::security('Rate limit exceeded (Redis)', [
+                'identifier' => $identifier,
+                'requests' => $currentRequests,
+                'limit' => $maxRequests
+            ]);
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * Database fallback for rate limiting when Redis is unavailable
+     */
+    private static function checkDatabase(string $identifier, int $maxRequests, int $windowSize): bool {
         try {
-            $redis = Redis::connect();
+            $now = time();
+            $windowStart = $now - $windowSize;
 
-            $redis->multi();
-            $redis->zRemRangeByScore($key, 0, $windowStart);
-            $redis->zCard($key);
-            $redis->zAdd($key, $now, $now . ':' . uniqid());
-            $redis->expire($key, $windowSize);
-            $result = $redis->exec();
+            // Create rate_limits table if it doesn't exist (idempotent)
+            self::ensureRateLimitTable();
 
-            $currentRequests = $result[1] ?? 0;
+            // Clean up old entries
+            Database::query(
+                "DELETE FROM rate_limits WHERE identifier = :identifier AND timestamp < :window_start",
+                ['identifier' => $identifier, 'window_start' => $windowStart]
+            );
+
+            // Count requests in current window
+            $count = Database::fetch(
+                "SELECT COUNT(*) as count FROM rate_limits WHERE identifier = :identifier AND timestamp >= :window_start",
+                ['identifier' => $identifier, 'window_start' => $windowStart]
+            );
+
+            $currentRequests = (int)($count['count'] ?? 0);
 
             if ($currentRequests >= $maxRequests) {
-                Logger::security('Rate limit exceeded', [
+                Logger::security('Rate limit exceeded (Database)', [
                     'identifier' => $identifier,
                     'requests' => $currentRequests,
                     'limit' => $maxRequests
@@ -146,13 +198,59 @@ class RateLimit {
                 return false;
             }
 
+            // Record this request
+            Database::query(
+                "INSERT INTO rate_limits (identifier, timestamp) VALUES (:identifier, :timestamp)",
+                ['identifier' => $identifier, 'timestamp' => $now]
+            );
+
             return true;
         } catch (\Exception $e) {
-            Logger::warning('Rate limiting check failed', [
+            Logger::error('Database rate limiting failed', [
                 'identifier' => $identifier,
                 'error' => $e->getMessage()
             ]);
-            return true; // Fail open on Redis connection errors
+
+            // Only fail open for database errors if we're in development
+            $isDevelopment = Config::get('APP_ENV', 'production') === 'development';
+            if ($isDevelopment) {
+                Logger::warning('Rate limiting disabled in development mode');
+                return true;
+            }
+
+            // Fail closed in production - deny the request
+            Logger::critical('Rate limiting system failure - denying request for safety');
+            return false;
+        }
+    }
+
+    /**
+     * Ensure the rate_limits table exists (called only when needed)
+     */
+    private static function ensureRateLimitTable(): void {
+        static $tableChecked = false;
+
+        if ($tableChecked) {
+            return;
+        }
+
+        try {
+            $pdo = Database::getConnection();
+            $pdo->exec("
+                CREATE TABLE IF NOT EXISTS rate_limits (
+                    id SERIAL PRIMARY KEY,
+                    identifier VARCHAR(255) NOT NULL,
+                    timestamp INTEGER NOT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            ");
+            $pdo->exec("CREATE INDEX IF NOT EXISTS idx_rate_limits_identifier_timestamp ON rate_limits(identifier, timestamp)");
+
+            $tableChecked = true;
+            Logger::debug('Rate limits table ensured');
+        } catch (\Exception $e) {
+            Logger::error('Failed to create rate_limits table', ['error' => $e->getMessage()]);
+            throw $e;
         }
     }
 
@@ -209,6 +307,11 @@ class RateLimit {
     }
 
     public static function getRemaining(string $identifier, int $maxRequests = self::MAX_REQUESTS, int $windowSize = self::WINDOW_SIZE): int {
+        // Check if Redis extension is available
+        if (!class_exists('Redis')) {
+            return $maxRequests; // Return full quota if Redis not available
+        }
+
         $key = "rate_limit:$identifier";
         $now = time();
         $windowStart = $now - $windowSize;
@@ -365,7 +468,20 @@ class RateLimit {
                 'ip' => $ipAddress,
                 'error' => $e->getMessage()
             ]);
-            // FAIL CLOSED for security - deny request on system errors
+
+            // Fail open in development mode, fail closed in production
+            $isDevelopment = Config::get('APP_ENV', 'production') === 'development';
+            if ($isDevelopment) {
+                Logger::warning('Anonymous scan check disabled in development mode');
+                return [
+                    'allowed' => true,
+                    'scans_used' => 0,
+                    'scans_remaining' => self::ANONYMOUS_FREE_SCANS,
+                    'scans_limit' => self::ANONYMOUS_FREE_SCANS
+                ];
+            }
+
+            // FAIL CLOSED for security in production - deny request on system errors
             return [
                 'allowed' => false,
                 'reason' => 'system_error',
@@ -479,6 +595,8 @@ class RateLimit {
             'REMOTE_ADDR'            // Direct connection
         ];
 
+        $isDevelopment = Config::get('APP_ENV', 'production') === 'development';
+
         foreach ($headers as $header) {
             if (!empty($_SERVER[$header])) {
                 $ip = $_SERVER[$header];
@@ -487,8 +605,9 @@ class RateLimit {
                     $ips = explode(',', $ip);
                     $ip = trim($ips[0]);
                 }
-                // Validate IP
-                if (filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE)) {
+                // Validate IP - in development mode, allow private IPs for testing
+                $flags = $isDevelopment ? 0 : (FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE);
+                if (filter_var($ip, FILTER_VALIDATE_IP, $flags)) {
                     return $ip;
                 }
             }

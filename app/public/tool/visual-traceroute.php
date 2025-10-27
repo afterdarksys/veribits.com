@@ -76,11 +76,11 @@
         <div class="container">
             <a href="/" class="logo">VeriBits</a>
             <ul>
-                <li><a href="/tools.html">Tools</a></li>
-                <li><a href="/pricing.html">Pricing</a></li>
-                <li><a href="/about.html">About</a></li>
-                <li><a href="/login.html">Login</a></li>
-                <li><a href="/signup.html" class="btn btn-primary">Sign Up</a></li>
+                <li><a href="/tools.php">Tools</a></li>
+                <li><a href="/pricing.php">Pricing</a></li>
+                <li><a href="/about.php">About</a></li>
+                <li><a href="/login.php">Login</a></li>
+                <li><a href="/signup.php" class="btn btn-primary">Sign Up</a></li>
             </ul>
         </div>
     </nav>
@@ -178,21 +178,10 @@
             document.getElementById('results-content').innerHTML = '<div class="spinner"></div><div class="progress-indicator">Tracing route to ' + target + '... This may take 30-60 seconds.</div>';
 
             try {
-                const response = await fetch('/api/v1/tools/traceroute', {
+                const data = await apiRequest('/api/v1/tools/traceroute', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-API-Key': localStorage.getItem('api_key') || ''
-                    },
                     body: JSON.stringify({ target, max_hops: maxHops })
                 });
-
-                const data = await response.json();
-
-                if (!response.ok) {
-                    const errorMsg = data.error?.message || data.error || data.message || 'Traceroute failed';
-                    throw new Error(errorMsg);
-                }
 
                 displayResults(data.data);
             } catch (error) {

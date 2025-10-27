@@ -11,6 +11,7 @@ class AdminController {
             $body = json_decode(file_get_contents('php://input'), true) ?? [];
             $email = $body['email'] ?? null;
             $password = $body['password'] ?? null;
+            $plan = $body['plan'] ?? 'free';
 
             if (!$email || !$password) {
                 Response::error('Email and password required', 400);
@@ -27,23 +28,29 @@ class AdminController {
 
             if (!$user) {
                 // Create the user if they don't exist
-                $stmt = $pdo->prepare("INSERT INTO users (email, password_hash, status) VALUES (:email, :password_hash, 'active') RETURNING id");
-                $stmt->execute(['email' => $email, 'password_hash' => $hash]);
+                $stmt = $pdo->prepare("INSERT INTO users (email, password, status) VALUES (:email, :password, 'active') RETURNING id");
+                $stmt->execute(['email' => $email, 'password' => $hash]);
                 $userId = $stmt->fetchColumn();
 
                 // Create API key, billing account, and quota
                 $apiKey = 'vb_' . bin2hex(random_bytes(24));
                 Database::insert('api_keys', ['user_id' => $userId, 'key' => $apiKey, 'name' => 'Default API Key']);
-                Database::insert('billing_accounts', ['user_id' => $userId, 'plan' => 'free']);
+                Database::insert('billing_accounts', ['user_id' => $userId, 'plan' => $plan]);
                 Database::insert('quotas', ['user_id' => $userId, 'period' => 'monthly', 'allowance' => 1000, 'used' => 0]);
 
-                Response::success(['user_id' => $userId, 'api_key' => $apiKey, 'action' => 'created'], 'User created successfully');
+                Response::success(['user_id' => $userId, 'api_key' => $apiKey, 'action' => 'created', 'plan' => $plan], 'User created successfully');
             } else {
                 // Update existing user's password
-                $stmt = $pdo->prepare("UPDATE users SET password_hash = :password_hash WHERE email = :email");
-                $stmt->execute(['password_hash' => $hash, 'email' => $email]);
+                $stmt = $pdo->prepare("UPDATE users SET password = :password WHERE email = :email");
+                $stmt->execute(['password' => $hash, 'email' => $email]);
 
-                Response::success(['user_id' => $user['id'], 'action' => 'updated'], 'Password updated successfully');
+                // Update billing plan if provided
+                if ($plan && $plan !== 'free') {
+                    $stmt = $pdo->prepare("UPDATE billing_accounts SET plan = :plan WHERE user_id = :user_id");
+                    $stmt->execute(['plan' => $plan, 'user_id' => $user['id']]);
+                }
+
+                Response::success(['user_id' => $user['id'], 'action' => 'updated', 'plan' => $plan], 'Password and plan updated successfully');
             }
 
         } catch (\Exception $e) {

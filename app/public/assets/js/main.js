@@ -25,7 +25,7 @@ function removeAuthToken() {
 // Logout function
 function logout() {
     removeAuthToken();
-    window.location.href = '/login.html';
+    window.location.href = '/login.php';
 }
 
 // API request helper
@@ -136,7 +136,7 @@ function socialLogin(provider) {
 // Protected page check
 function requireAuth() {
     if (!isAuthenticated()) {
-        window.location.href = '/login.html';
+        window.location.href = '/login.php';
     }
 }
 

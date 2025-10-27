@@ -56,7 +56,7 @@
                 <h2 style="margin-bottom: 1rem;">Quick Actions</h2>
                 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
                     <a href="/tool/file-magic.php" class="btn btn-primary">File Magic Scan</a>
-                    <a href="/tool/file-signature.php" class="btn btn-primary">Verify Signature</a>
+                    <a href="/tool/code-signing.php" class="btn btn-primary">Verify Signature</a>
                     <a href="/tools.php" class="btn btn-secondary">All Tools</a>
                     <a href="/settings.php" class="btn btn-secondary">Settings</a>
                 </div>
@@ -82,3 +82,4 @@
     <script src="/assets/js/dashboard.js"></script>
 </body>
 </html>
+<!-- version hash: 86db590587abafc7e6e5e85429d703db3c8280a29dc86a360909573de77186c3 -->

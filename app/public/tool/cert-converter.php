@@ -11,11 +11,11 @@
         <div class="container">
             <a href="/" class="logo">VeriBits</a>
             <ul>
-                <li><a href="/tools.html">Tools</a></li>
-                <li><a href="/pricing.html">Pricing</a></li>
-                <li><a href="/about.html">About</a></li>
-                <li><a href="/login.html">Login</a></li>
-                <li><a href="/signup.html" class="btn btn-primary">Sign Up</a></li>
+                <li><a href="/tools.php">Tools</a></li>
+                <li><a href="/pricing.php">Pricing</a></li>
+                <li><a href="/about.php">About</a></li>
+                <li><a href="/login.php">Login</a></li>
+                <li><a href="/signup.php" class="btn btn-primary">Sign Up</a></li>
             </ul>
         </div>
     </nav>
@@ -28,7 +28,7 @@
             </p>
 
             <div class="alert" style="background: rgba(102, 126, 234, 0.1); border: 1px solid var(--primary-color); color: var(--primary-color); margin-bottom: 2rem;">
-                <strong>💡 Tip:</strong> For the best experience and security, use the <a href="/cli.html" style="color: var(--primary-color); text-decoration: underline;">VeriBits CLI</a> to perform certificate conversions locally on your machine.
+                <strong>💡 Tip:</strong> For the best experience and security, use the <a href="/cli.php" style="color: var(--primary-color); text-decoration: underline;">VeriBits CLI</a> to perform certificate conversions locally on your machine.
             </div>
 
             <div id="alert-container"></div>

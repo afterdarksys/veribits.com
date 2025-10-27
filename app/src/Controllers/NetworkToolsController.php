@@ -126,10 +126,15 @@ class NetworkToolsController
                 $records[] = $recordData;
             }
 
-            // Check DNSSEC (simple check via dig if available)
-            $dnssecCheck = @shell_exec("dig +dnssec " . escapeshellarg($domain) . " | grep -i 'ad;' 2>/dev/null");
-            if (!empty($dnssecCheck)) {
-                $dnssec['enabled'] = true;
+            // Check DNSSEC (simple check via dig if available using CommandExecutor)
+            try {
+                $result = \VeriBits\Utils\CommandExecutor::execute('dig', ['+dnssec', $domain]);
+                if ($result['exit_code'] === 0 && stripos($result['stdout'], 'ad;') !== false) {
+                    $dnssec['enabled'] = true;
+                }
+            } catch (\Exception $e) {
+                // DNSSEC check failed, continue without it
+                \VeriBits\Utils\Logger::debug('DNSSEC check failed', ['error' => $e->getMessage()]);
             }
 
             if (!$auth['authenticated']) {
@@ -1120,5 +1125,398 @@ class NetworkToolsController
         }
 
         return null;
+    }
+
+    /**
+     * Validate DNSSEC configuration for a domain
+     */
+    public function dnssecValidate(): void
+    {
+        $auth = Auth::optionalAuth();
+
+        if (!$auth['authenticated']) {
+            $scanCheck = RateLimit::checkAnonymousScan($auth['ip_address'], 0);
+            if (!$scanCheck['allowed']) {
+                Response::error($scanCheck['message'], 429);
+                return;
+            }
+        }
+
+        $input = json_decode(file_get_contents('php://input'), true);
+        $domain = $input['domain'] ?? '';
+
+        if (empty($domain)) {
+            Response::error('Domain is required', 400);
+            return;
+        }
+
+        // Basic domain validation
+        if (!preg_match('/^([a-z0-9]+(-[a-z0-9]+)*\.)+[a-z]{2,}$/i', $domain)) {
+            Response::error('Invalid domain name', 400);
+            return;
+        }
+
+        try {
+            $dnssecEnabled = false;
+            $dnskeyRecords = [];
+            $dsRecords = [];
+            $rrsigRecords = [];
+            $chainOfTrust = [];
+            $validationMessage = '';
+
+            // Check DNSSEC using dig command
+            try {
+                $result = \VeriBits\Utils\CommandExecutor::execute('dig', ['+dnssec', '+multiline', $domain, 'DNSKEY']);
+
+                if ($result['exit_code'] === 0) {
+                    $output = $result['stdout'];
+
+                    // Check if DNSSEC is enabled (AD flag or RRSIG present)
+                    if (stripos($output, ' ad;') !== false || stripos($output, 'RRSIG') !== false) {
+                        $dnssecEnabled = true;
+                        $validationMessage = 'DNSSEC is properly configured and validated';
+                    }
+
+                    // Parse DNSKEY records
+                    if (preg_match_all('/DNSKEY\s+(\d+)\s+(\d+)\s+(\d+)\s+(.+?)(?=\n\S|\n\n|$)/s', $output, $matches, PREG_SET_ORDER)) {
+                        foreach ($matches as $match) {
+                            $flags = (int)$match[1];
+                            $protocol = (int)$match[2];
+                            $algorithm = (int)$match[3];
+                            $publicKey = preg_replace('/\s+/', '', $match[4]);
+
+                            // Calculate key tag (simplified)
+                            $keyTag = $this->calculateKeyTag($flags, $protocol, $algorithm, $publicKey);
+
+                            $dnskeyRecords[] = [
+                                'flags' => $flags,
+                                'protocol' => $protocol,
+                                'algorithm' => $algorithm,
+                                'public_key' => $publicKey,
+                                'key_tag' => $keyTag
+                            ];
+                        }
+                    }
+                }
+            } catch (\Exception $e) {
+                // Continue without DNSSEC data
+            }
+
+            // Get DS records from parent zone
+            try {
+                $result = \VeriBits\Utils\CommandExecutor::execute('dig', ['+dnssec', $domain, 'DS']);
+
+                if ($result['exit_code'] === 0) {
+                    $output = $result['stdout'];
+
+                    // Parse DS records
+                    if (preg_match_all('/DS\s+(\d+)\s+(\d+)\s+(\d+)\s+([A-Fa-f0-9]+)/', $output, $matches, PREG_SET_ORDER)) {
+                        foreach ($matches as $match) {
+                            $dsRecords[] = [
+                                'key_tag' => (int)$match[1],
+                                'algorithm' => (int)$match[2],
+                                'digest_type' => (int)$match[3],
+                                'digest' => $match[4]
+                            ];
+                        }
+                    }
+                }
+            } catch (\Exception $e) {
+                // Continue without DS records
+            }
+
+            // Get RRSIG records
+            try {
+                $result = \VeriBits\Utils\CommandExecutor::execute('dig', ['+dnssec', $domain, 'SOA']);
+
+                if ($result['exit_code'] === 0) {
+                    $output = $result['stdout'];
+
+                    // Parse RRSIG records
+                    if (preg_match_all('/RRSIG\s+(\w+)\s+(\d+)\s+\d+\s+\d+\s+(\d+)\s+(\d+)\s+\d+\s+([^\s]+)/', $output, $matches, PREG_SET_ORDER)) {
+                        foreach ($matches as $match) {
+                            $rrsigRecords[] = [
+                                'type_covered' => $match[1],
+                                'algorithm' => (int)$match[2],
+                                'signature_expiration' => date('Y-m-d H:i:s', (int)$match[3]),
+                                'signature_inception' => date('Y-m-d H:i:s', (int)$match[4]),
+                                'signer_name' => $match[5]
+                            ];
+                        }
+                    }
+                }
+            } catch (\Exception $e) {
+                // Continue without RRSIG records
+            }
+
+            // Build chain of trust
+            if ($dnssecEnabled) {
+                $chainOfTrust[] = 'Root Zone (.)';
+
+                // Get TLD
+                $parts = explode('.', $domain);
+                if (count($parts) >= 2) {
+                    $tld = $parts[count($parts) - 1];
+                    $chainOfTrust[] = "TLD Zone (.{$tld})";
+                    $chainOfTrust[] = "Domain Zone ({$domain})";
+                }
+            } else {
+                $validationMessage = 'DNSSEC is not configured for this domain';
+            }
+
+            if (!$auth['authenticated']) {
+                RateLimit::incrementAnonymousScan($auth['ip_address']);
+            }
+
+            Response::success('DNSSEC validation completed', [
+                'domain' => $domain,
+                'dnssec_enabled' => $dnssecEnabled,
+                'validation_message' => $validationMessage,
+                'dnskey_records' => $dnskeyRecords,
+                'ds_records' => $dsRecords,
+                'rrsig_records' => $rrsigRecords,
+                'chain_of_trust' => $chainOfTrust
+            ]);
+
+        } catch (\Exception $e) {
+            Response::error('DNSSEC validation failed: ' . $e->getMessage(), 500);
+        }
+    }
+
+    /**
+     * Calculate DNSSEC key tag (simplified version)
+     */
+    private function calculateKeyTag(int $flags, int $protocol, int $algorithm, string $publicKey): int
+    {
+        // Simplified key tag calculation - in production use proper DNSSEC library
+        return (($flags + $protocol + $algorithm + strlen($publicKey)) % 65536);
+    }
+
+    /**
+     * Check DNS propagation across multiple global nameservers
+     */
+    public function dnsPropagation(): void
+    {
+        $auth = Auth::optionalAuth();
+
+        if (!$auth['authenticated']) {
+            $scanCheck = RateLimit::checkAnonymousScan($auth['ip_address'], 0);
+            if (!$scanCheck['allowed']) {
+                Response::error($scanCheck['message'], 429);
+                return;
+            }
+        }
+
+        $input = json_decode(file_get_contents('php://input'), true);
+        $domain = $input['domain'] ?? '';
+        $recordType = $input['record_type'] ?? 'A';
+
+        if (empty($domain)) {
+            Response::error('Domain is required', 400);
+            return;
+        }
+
+        // Validate record type
+        $validTypes = ['A', 'AAAA', 'CNAME', 'MX', 'TXT', 'NS'];
+        if (!in_array($recordType, $validTypes)) {
+            Response::error('Invalid record type', 400);
+            return;
+        }
+
+        try {
+            // Global DNS servers with locations
+            $dnsServers = [
+                ['server' => '8.8.8.8', 'location' => 'Google (US)', 'flag' => '🇺🇸'],
+                ['server' => '8.8.4.4', 'location' => 'Google (US)', 'flag' => '🇺🇸'],
+                ['server' => '1.1.1.1', 'location' => 'Cloudflare (US)', 'flag' => '🇺🇸'],
+                ['server' => '1.0.0.1', 'location' => 'Cloudflare (US)', 'flag' => '🇺🇸'],
+                ['server' => '208.67.222.222', 'location' => 'OpenDNS (US)', 'flag' => '🇺🇸'],
+                ['server' => '208.67.220.220', 'location' => 'OpenDNS (US)', 'flag' => '🇺🇸'],
+                ['server' => '9.9.9.9', 'location' => 'Quad9 (US)', 'flag' => '🇺🇸'],
+                ['server' => '149.112.112.112', 'location' => 'Quad9 (Global)', 'flag' => '🌐'],
+                ['server' => '84.200.69.80', 'location' => 'DNS.WATCH (Germany)', 'flag' => '🇩🇪'],
+                ['server' => '84.200.70.40', 'location' => 'DNS.WATCH (Germany)', 'flag' => '🇩🇪'],
+                ['server' => '8.26.56.26', 'location' => 'Comodo (US)', 'flag' => '🇺🇸'],
+                ['server' => '8.20.247.20', 'location' => 'Comodo (US)', 'flag' => '🇺🇸'],
+                ['server' => '64.6.64.6', 'location' => 'Verisign (US)', 'flag' => '🇺🇸'],
+                ['server' => '64.6.65.6', 'location' => 'Verisign (US)', 'flag' => '🇺🇸'],
+                ['server' => '77.88.8.8', 'location' => 'Yandex (Russia)', 'flag' => '🇷🇺'],
+                ['server' => '77.88.8.1', 'location' => 'Yandex (Russia)', 'flag' => '🇷🇺']
+            ];
+
+            $results = [];
+
+            foreach ($dnsServers as $server) {
+                $startTime = microtime(true);
+
+                try {
+                    // Use dig to query specific DNS server
+                    $result = \VeriBits\Utils\CommandExecutor::execute('dig', [
+                        '@' . $server['server'],
+                        '+short',
+                        '+time=2',
+                        '+tries=1',
+                        $domain,
+                        $recordType
+                    ]);
+
+                    $queryTime = round((microtime(true) - $startTime) * 1000, 2) . 'ms';
+
+                    if ($result['exit_code'] === 0 && !empty(trim($result['stdout']))) {
+                        $records = array_filter(explode("\n", trim($result['stdout'])));
+
+                        $results[] = [
+                            'server' => $server['server'],
+                            'location' => $server['location'],
+                            'flag' => $server['flag'],
+                            'status' => 'success',
+                            'result' => $records,
+                            'query_time' => $queryTime
+                        ];
+                    } else {
+                        $results[] = [
+                            'server' => $server['server'],
+                            'location' => $server['location'],
+                            'flag' => $server['flag'],
+                            'status' => 'error',
+                            'result' => null,
+                            'error' => 'No records found',
+                            'query_time' => $queryTime
+                        ];
+                    }
+                } catch (\Exception $e) {
+                    $queryTime = round((microtime(true) - $startTime) * 1000, 2) . 'ms';
+
+                    $results[] = [
+                        'server' => $server['server'],
+                        'location' => $server['location'],
+                        'flag' => $server['flag'],
+                        'status' => 'error',
+                        'result' => null,
+                        'error' => 'Query timeout or failed',
+                        'query_time' => $queryTime
+                    ];
+                }
+            }
+
+            if (!$auth['authenticated']) {
+                RateLimit::incrementAnonymousScan($auth['ip_address']);
+            }
+
+            Response::success('DNS propagation check completed', [
+                'domain' => $domain,
+                'record_type' => $recordType,
+                'servers' => $results,
+                'total_servers' => count($results)
+            ]);
+
+        } catch (\Exception $e) {
+            Response::error('DNS propagation check failed: ' . $e->getMessage(), 500);
+        }
+    }
+
+    /**
+     * Perform reverse DNS lookup (PTR records)
+     */
+    public function reverseDns(): void
+    {
+        $auth = Auth::optionalAuth();
+
+        if (!$auth['authenticated']) {
+            $scanCheck = RateLimit::checkAnonymousScan($auth['ip_address'], 0);
+            if (!$scanCheck['allowed']) {
+                Response::error($scanCheck['message'], 429);
+                return;
+            }
+        }
+
+        $input = json_decode(file_get_contents('php://input'), true);
+        $ipAddresses = $input['ip_addresses'] ?? [];
+        $validateForward = $input['validate_forward'] ?? true;
+
+        if (empty($ipAddresses) || !is_array($ipAddresses)) {
+            Response::error('At least one IP address is required', 400);
+            return;
+        }
+
+        // Limit bulk lookups
+        if (count($ipAddresses) > 100) {
+            Response::error('Maximum 100 IP addresses allowed per request', 400);
+            return;
+        }
+
+        try {
+            $results = [];
+
+            foreach ($ipAddresses as $ip) {
+                $ip = trim($ip);
+
+                // Validate IP address
+                if (!filter_var($ip, FILTER_VALIDATE_IP)) {
+                    $results[] = [
+                        'ip_address' => $ip,
+                        'ptr_record' => null,
+                        'error' => 'Invalid IP address format'
+                    ];
+                    continue;
+                }
+
+                // Perform reverse DNS lookup
+                $hostname = @gethostbyaddr($ip);
+                $ptrRecord = ($hostname && $hostname !== $ip) ? $hostname : null;
+
+                $result = [
+                    'ip_address' => $ip,
+                    'ptr_record' => $ptrRecord ?: 'No PTR record found'
+                ];
+
+                // Validate forward DNS if requested and PTR exists
+                if ($validateForward && $ptrRecord) {
+                    $forwardRecords = [];
+                    $matches = false;
+
+                    // Get A/AAAA records for the PTR hostname
+                    $aRecords = @dns_get_record($ptrRecord, DNS_A | DNS_AAAA);
+
+                    if ($aRecords) {
+                        foreach ($aRecords as $record) {
+                            if (isset($record['ip'])) {
+                                $forwardRecords[] = $record['ip'];
+                                if ($record['ip'] === $ip) {
+                                    $matches = true;
+                                }
+                            }
+                            if (isset($record['ipv6'])) {
+                                $forwardRecords[] = $record['ipv6'];
+                                if ($record['ipv6'] === $ip) {
+                                    $matches = true;
+                                }
+                            }
+                        }
+                    }
+
+                    $result['forward_dns'] = [
+                        'hostname' => $ptrRecord,
+                        'records' => $forwardRecords,
+                        'matches' => $matches
+                    ];
+                }
+
+                $results[] = $result;
+            }
+
+            if (!$auth['authenticated']) {
+                RateLimit::incrementAnonymousScan($auth['ip_address']);
+            }
+
+            Response::success('Reverse DNS lookup completed', [
+                'results' => $results,
+                'total_lookups' => count($results),
+                'validate_forward' => $validateForward
+            ]);
+
+        } catch (\Exception $e) {
+            Response::error('Reverse DNS lookup failed: ' . $e->getMessage(), 500);
+        }
     }
 }

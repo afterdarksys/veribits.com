@@ -10,15 +10,17 @@ if (loginForm) {
         const password = document.getElementById('password').value;
 
         try {
-            const data = await apiRequest('/auth/login', {
+            const response = await apiRequest('/auth/login', {
                 method: 'POST',
                 body: JSON.stringify({ email, password })
             });
 
-            if (data.token) {
-                setAuthToken(data.token);
-                localStorage.setItem('veribits_user', JSON.stringify(data.user));
-                window.location.href = '/dashboard.html';
+            if (response.data && response.data.access_token) {
+                setAuthToken(response.data.access_token);
+                localStorage.setItem('veribits_user', JSON.stringify(response.data.user));
+                window.location.href = '/dashboard.php';
+            } else {
+                showAlert('Login failed - invalid response', 'error');
             }
         } catch (error) {
             showAlert(error.message || 'Login failed', 'error');
@@ -42,18 +44,20 @@ if (signupForm) {
         }
 
         try {
-            const data = await apiRequest('/auth/register', {
+            const response = await apiRequest('/auth/register', {
                 method: 'POST',
                 body: JSON.stringify({ email, password })
             });
 
-            if (data.token) {
-                setAuthToken(data.token);
-                localStorage.setItem('veribits_user', JSON.stringify(data.user));
+            if (response.data && response.data.access_token) {
+                setAuthToken(response.data.access_token);
+                localStorage.setItem('veribits_user', JSON.stringify(response.data.user));
                 showAlert('Account created successfully!', 'success');
                 setTimeout(() => {
-                    window.location.href = '/dashboard.html';
+                    window.location.href = '/dashboard.php';
                 }, 1500);
+            } else {
+                showAlert('Registration failed - invalid response', 'error');
             }
         } catch (error) {
             showAlert(error.message || 'Registration failed', 'error');

@@ -1,0 +1,229 @@
+{
+  "timestamp": "2025-10-27T04:31:46.713Z",
+  "baseUrl": "http://localhost:8080",
+  "pagePath": "/home.php",
+  "summary": {
+    "totalTests": 4,
+    "passedTests": 4,
+    "failedTests": 0,
+    "successRate": "100.0%"
+  },
+  "results": [
+    {
+      "viewport": {
+        "name": "Desktop",
+        "width": 1920,
+        "height": 1080
+      },
+      "screenshot": "/Users/ryan/development/veribits.com/tests/screenshots/Desktop-1920x1080.png",
+      "bounds": {
+        "logo": {
+          "x": 392,
+          "y": 26,
+          "width": 136,
+          "height": 46
+        },
+        "searchContainer": {
+          "x": 560,
+          "y": 30,
+          "width": 400,
+          "height": 38
+        },
+        "searchInput": {
+          "x": 560,
+          "y": 30,
+          "width": 400,
+          "height": 38
+        },
+        "goButton": {
+          "x": 906,
+          "y": 35,
+          "width": 51,
+          "height": 28
+        },
+        "navMenu": {
+          "x": 1062,
+          "y": 24,
+          "width": 466,
+          "height": 50
+        }
+      },
+      "metrics": {
+        "logoVisible": true,
+        "searchVisible": true,
+        "goButtonVisible": true,
+        "navMenuVisible": true,
+        "containerFlexWrap": "nowrap",
+        "searchOrder": "0",
+        "viewportWidth": 1920,
+        "viewportHeight": 1080
+      },
+      "overlaps": [],
+      "issues": [],
+      "passed": true
+    },
+    {
+      "viewport": {
+        "name": "Tablet",
+        "width": 768,
+        "height": 1024
+      },
+      "screenshot": "/Users/ryan/development/veribits.com/tests/screenshots/Tablet-768x1024.png",
+      "bounds": {
+        "logo": {
+          "x": 32,
+          "y": 24,
+          "width": 136,
+          "height": 46
+        },
+        "searchContainer": {
+          "x": 32,
+          "y": 91,
+          "width": 704,
+          "height": 38
+        },
+        "searchInput": {
+          "x": 32,
+          "y": 91,
+          "width": 704,
+          "height": 38
+        },
+        "goButton": {
+          "x": 681,
+          "y": 96,
+          "width": 51,
+          "height": 28
+        },
+        "navMenu": {
+          "x": 345,
+          "y": 24,
+          "width": 391,
+          "height": 47
+        }
+      },
+      "metrics": {
+        "logoVisible": true,
+        "searchVisible": true,
+        "goButtonVisible": true,
+        "navMenuVisible": true,
+        "containerFlexWrap": "wrap",
+        "searchOrder": "3",
+        "viewportWidth": 768,
+        "viewportHeight": 1024
+      },
+      "overlaps": [],
+      "issues": [],
+      "passed": true
+    },
+    {
+      "viewport": {
+        "name": "iPhone SE",
+        "width": 375,
+        "height": 667
+      },
+      "screenshot": "/Users/ryan/development/veribits.com/tests/screenshots/iPhone-SE-375x667.png",
+      "bounds": {
+        "logo": {
+          "x": 32,
+          "y": 24,
+          "width": 136,
+          "height": 46
+        },
+        "searchContainer": {
+          "x": 32,
+          "y": 137,
+          "width": 311,
+          "height": 38
+        },
+        "searchInput": {
+          "x": 32,
+          "y": 137,
+          "width": 311,
+          "height": 38
+        },
+        "goButton": {
+          "x": 288,
+          "y": 142,
+          "width": 51,
+          "height": 28
+        },
+        "navMenu": {
+          "x": 32,
+          "y": 82,
+          "width": 441,
+          "height": 35
+        }
+      },
+      "metrics": {
+        "logoVisible": true,
+        "searchVisible": true,
+        "goButtonVisible": true,
+        "navMenuVisible": true,
+        "containerFlexWrap": "wrap",
+        "searchOrder": "3",
+        "viewportWidth": 375,
+        "viewportHeight": 667
+      },
+      "overlaps": [],
+      "issues": [
+        "WARNING: Navigation menu extends beyond viewport width"
+      ],
+      "passed": true
+    },
+    {
+      "viewport": {
+        "name": "iPhone 12",
+        "width": 390,
+        "height": 844
+      },
+      "screenshot": "/Users/ryan/development/veribits.com/tests/screenshots/iPhone-12-390x844.png",
+      "bounds": {
+        "logo": {
+          "x": 32,
+          "y": 24,
+          "width": 136,
+          "height": 46
+        },
+        "searchContainer": {
+          "x": 32,
+          "y": 137,
+          "width": 326,
+          "height": 38
+        },
+        "searchInput": {
+          "x": 32,
+          "y": 137,
+          "width": 326,
+          "height": 38
+        },
+        "goButton": {
+          "x": 303,
+          "y": 142,
+          "width": 51,
+          "height": 28
+        },
+        "navMenu": {
+          "x": 32,
+          "y": 82,
+          "width": 441,
+          "height": 35
+        }
+      },
+      "metrics": {
+        "logoVisible": true,
+        "searchVisible": true,
+        "goButtonVisible": true,
+        "navMenuVisible": true,
+        "containerFlexWrap": "wrap",
+        "searchOrder": "3",
+        "viewportWidth": 390,
+        "viewportHeight": 844
+      },
+      "overlaps": [],
+      "issues": [
+        "WARNING: Navigation menu extends beyond viewport width"
+      ],
+      "passed": true
+    }
+  ]
+}

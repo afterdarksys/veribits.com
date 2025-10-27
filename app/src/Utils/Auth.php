@@ -98,7 +98,17 @@ class Auth {
             exit;
         }
 
-        $apiKey = $_SERVER['HTTP_X_API_KEY'] ?? $_GET['api_key'] ?? null;
+        // Security: API keys must be sent via X-API-Key header only, not in URL
+        if (isset($_GET['api_key'])) {
+            Logger::security('API key sent in URL query parameter (blocked)', ['ip' => $clientIp]);
+            Response::json([
+                'error' => 'Invalid authentication method',
+                'message' => 'API keys must be sent via X-API-Key header, not in URL parameters'
+            ], 400);
+            exit;
+        }
+
+        $apiKey = $_SERVER['HTTP_X_API_KEY'] ?? null;
 
         if (!$apiKey) {
             Logger::security('Missing API key', ['ip' => $clientIp]);
@@ -147,8 +157,14 @@ class Auth {
             }
         }
 
-        // Check API key
-        $apiKey = $_SERVER['HTTP_X_API_KEY'] ?? $_GET['api_key'] ?? null;
+        // Check API key (header only for security)
+        if (isset($_GET['api_key'])) {
+            Logger::security('API key sent in URL query parameter (blocked)', [
+                'ip' => RateLimit::getClientIp()
+            ]);
+        }
+
+        $apiKey = $_SERVER['HTTP_X_API_KEY'] ?? null;
         if ($apiKey) {
             $keyData = self::validateApiKey($apiKey);
             if ($keyData) {
@@ -169,15 +185,16 @@ class Auth {
         if (!$limitCheck['allowed']) {
             Logger::security('Anonymous rate limit exceeded', [
                 'ip' => $clientIp,
-                'reason' => $limitCheck['reason']
+                'reason' => $limitCheck['reason'] ?? 'rate_limit_exceeded'
             ]);
+            $limit = $limitCheck['limit'] ?? $limitCheck['daily_limit'] ?? 25;
             Response::json([
                 'error' => 'Rate limit exceeded',
-                'message' => $limitCheck['reason'] === 'hourly_limit_exceeded'
-                    ? "You have exceeded the hourly limit of {$limitCheck['limit']} requests. Please register for higher limits."
-                    : "You have exceeded the daily limit of {$limitCheck['limit']} requests. Please register for higher limits.",
-                'limit' => $limitCheck['limit'],
-                'reset_in_seconds' => $limitCheck['reset_in'],
+                'message' => isset($limitCheck['reason']) && $limitCheck['reason'] === 'hourly_limit_exceeded'
+                    ? "You have exceeded the hourly limit of {$limit} requests. Please register for higher limits."
+                    : "You have exceeded the daily limit of {$limit} requests. Please register for higher limits.",
+                'limit' => $limit,
+                'reset_in_seconds' => $limitCheck['reset_in'] ?? $limitCheck['reset_in_seconds'] ?? null,
                 'upgrade_message' => 'Create a free account to get 100 requests per day and 1000 per month.'
             ], 429);
             exit;
@@ -185,8 +202,8 @@ class Auth {
 
         Logger::debug('Anonymous request', [
             'ip' => $clientIp,
-            'hourly_remaining' => $limitCheck['hourly_remaining'],
-            'daily_remaining' => $limitCheck['daily_remaining']
+            'hourly_remaining' => $limitCheck['hourly_remaining'] ?? null,
+            'daily_remaining' => $limitCheck['daily_remaining'] ?? null
         ]);
 
         return [

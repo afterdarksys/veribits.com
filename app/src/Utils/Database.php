@@ -7,6 +7,52 @@ class Database {
     private static int $queryCount = 0;
     private static int $maxQueriesPerConnection = 1000;
 
+    // Whitelist of allowed table names to prevent SQL injection
+    private static array $allowedTables = [
+        'users', 'api_keys', 'verifications', 'webhooks', 'webhook_deliveries',
+        'billing_plans', 'subscriptions', 'usage_logs', 'audit_logs',
+        'password_resets', 'email_verifications', 'sessions', 'anonymous_scans',
+        'quotas', 'rate_limits', 'keystore_conversions'
+    ];
+
+    /**
+     * Validate table name against whitelist
+     * @throws \InvalidArgumentException if table name is not allowed
+     */
+    private static function validateTableName(string $table): void {
+        if (!in_array($table, self::$allowedTables, true)) {
+            Logger::security('Attempted SQL injection via invalid table name', [
+                'table' => $table,
+                'backtrace' => debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 3)
+            ]);
+            throw new \InvalidArgumentException("Invalid table name: $table");
+        }
+    }
+
+    /**
+     * Validate column/field names to prevent SQL injection
+     * Only allows alphanumeric characters and underscores
+     * @throws \InvalidArgumentException if field name is invalid
+     */
+    private static function validateFieldName(string $field): void {
+        if (!preg_match('/^[a-zA-Z0-9_]+$/', $field)) {
+            Logger::security('Attempted SQL injection via invalid field name', [
+                'field' => $field,
+                'backtrace' => debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 3)
+            ]);
+            throw new \InvalidArgumentException("Invalid field name: $field");
+        }
+    }
+
+    /**
+     * Validate all field names in an array
+     */
+    private static function validateFieldNames(array $fields): void {
+        foreach ($fields as $field) {
+            self::validateFieldName($field);
+        }
+    }
+
     public static function connect(): \PDO {
         // Recycle connection after max queries to prevent connection leaks
         if (self::$connection !== null && self::$queryCount >= self::$maxQueriesPerConnection) {
@@ -99,7 +145,10 @@ class Database {
     }
 
     public static function insert(string $table, array $data): string {
+        self::validateTableName($table);
         $fields = array_keys($data);
+        self::validateFieldNames($fields);
+
         $placeholders = array_map(fn($field) => ":$field", $fields);
 
         $sql = "INSERT INTO $table (" . implode(', ', $fields) . ") VALUES (" . implode(', ', $placeholders) . ") RETURNING id";
@@ -109,6 +158,10 @@ class Database {
     }
 
     public static function update(string $table, array $data, array $where): int {
+        self::validateTableName($table);
+        self::validateFieldNames(array_keys($data));
+        self::validateFieldNames(array_keys($where));
+
         $setClause = implode(', ', array_map(fn($field) => "$field = :$field", array_keys($data)));
         $whereClause = implode(' AND ', array_map(fn($field) => "$field = :where_$field", array_keys($where)));
 
@@ -124,6 +177,9 @@ class Database {
     }
 
     public static function delete(string $table, array $where): int {
+        self::validateTableName($table);
+        self::validateFieldNames(array_keys($where));
+
         $whereClause = implode(' AND ', array_map(fn($field) => "$field = :$field", array_keys($where)));
         $sql = "DELETE FROM $table WHERE $whereClause";
         $stmt = self::query($sql, $where);
@@ -132,6 +188,9 @@ class Database {
     }
 
     public static function exists(string $table, array $where): bool {
+        self::validateTableName($table);
+        self::validateFieldNames(array_keys($where));
+
         $whereClause = implode(' AND ', array_map(fn($field) => "$field = :$field", array_keys($where)));
         $sql = "SELECT 1 FROM $table WHERE $whereClause LIMIT 1";
         $stmt = self::query($sql, $where);
@@ -140,6 +199,11 @@ class Database {
     }
 
     public static function count(string $table, array $where = []): int {
+        self::validateTableName($table);
+        if (!empty($where)) {
+            self::validateFieldNames(array_keys($where));
+        }
+
         $whereClause = empty($where) ? '' : 'WHERE ' . implode(' AND ', array_map(fn($field) => "$field = :$field", array_keys($where)));
         $sql = "SELECT COUNT(*) FROM $table $whereClause";
         $stmt = self::query($sql, $where);

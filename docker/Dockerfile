@@ -46,6 +46,9 @@ RUN cd /tmp && \
     cd / && \
     rm -rf /tmp/osslsigncode
 
+# Copy Apache configuration
+COPY docker/apache-veribits.conf /etc/apache2/sites-available/000-default.conf
+
 # Copy application files
 COPY app/public/ /var/www/html/
 COPY app/src/ /var/www/src/
@@ -73,6 +76,15 @@ RUN a2enmod rewrite headers && \
     AllowOverride All\n\
     Require all granted\n\
 </Directory>' >> /etc/apache2/apache2.conf
+
+# Configure PHP for POST data handling
+RUN echo "max_input_vars = 5000" >> /usr/local/etc/php/conf.d/uploads.ini && \
+    echo "post_max_size = 100M" >> /usr/local/etc/php/conf.d/uploads.ini && \
+    echo "upload_max_filesize = 100M" >> /usr/local/etc/php/conf.d/uploads.ini && \
+    echo "max_execution_time = 300" >> /usr/local/etc/php/conf.d/uploads.ini && \
+    echo "memory_limit = 512M" >> /usr/local/etc/php/conf.d/uploads.ini && \
+    echo "enable_post_data_reading = On" >> /usr/local/etc/php/conf.d/uploads.ini && \
+    echo "always_populate_raw_post_data = -1" >> /usr/local/etc/php/conf.d/uploads.ini
 
 # Create directories for file uploads
 RUN mkdir -p /tmp/veribits-scans /tmp/veribits-archives \
@@ -130,4 +142,31 @@ RUN openssl genrsa -out /etc/veribits/certs/ca-key.pem 4096 && \
     # Cleanup
     rm -f /tmp/codesign_ext.cnf /etc/veribits/certs/*.csr
 
+# IMPORTANT: Clear all caches before deployment
+RUN echo "Clearing all caches..." && \
+    # Clear PHP opcache cache directory
+    rm -rf /tmp/php* /var/tmp/php* && \
+    # Clear any APT caches
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/* && \
+    # Clear temp cache files (but preserve veribits directories)
+    find /tmp/veribits-scans -mindepth 1 -delete 2>/dev/null || true && \
+    find /tmp/veribits-archives -mindepth 1 -delete 2>/dev/null || true && \
+    find /tmp/veribits-signing -mindepth 1 -delete 2>/dev/null || true && \
+    rm -rf /var/www/html/cache/* && \
+    # Create opcache configuration to auto-clear on restart
+    echo "opcache.enable=1" > /usr/local/etc/php/conf.d/opcache.ini && \
+    echo "opcache.memory_consumption=256" >> /usr/local/etc/php/conf.d/opcache.ini && \
+    echo "opcache.interned_strings_buffer=16" >> /usr/local/etc/php/conf.d/opcache.ini && \
+    echo "opcache.max_accelerated_files=10000" >> /usr/local/etc/php/conf.d/opcache.ini && \
+    echo "opcache.revalidate_freq=2" >> /usr/local/etc/php/conf.d/opcache.ini && \
+    echo "opcache.validate_timestamps=1" >> /usr/local/etc/php/conf.d/opcache.ini && \
+    echo "Cache clearing complete!"
+
+# Copy and configure entrypoint script
+COPY docker/entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
 EXPOSE 80
+
+ENTRYPOINT ["/entrypoint.sh"]

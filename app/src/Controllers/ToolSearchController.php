@@ -16,7 +16,7 @@ class ToolSearchController {
             'endpoint' => '/api/v1/tools/dns',
             'cli_command' => 'veribits dns example.com',
             'keywords' => ['dns', 'domain', 'lookup', 'nameserver', 'records', 'mx', 'txt', 'cname', 'a record'],
-            'url' => '/tools/dns'
+            'url' => '/tool/dns-validator.php'
         ],
         [
             'id' => 'whois',
@@ -26,7 +26,7 @@ class ToolSearchController {
             'endpoint' => '/api/v1/tools/whois',
             'cli_command' => 'veribits whois example.com',
             'keywords' => ['whois', 'domain', 'registrar', 'registration', 'ip', 'owner'],
-            'url' => '/tools/whois'
+            'url' => '/tool/zone-validator.php'
         ],
         [
             'id' => 'ip-calculator',
@@ -36,7 +36,7 @@ class ToolSearchController {
             'endpoint' => '/api/v1/tools/ip-calculator',
             'cli_command' => 'veribits ip-calc 192.168.1.0/24',
             'keywords' => ['ip', 'subnet', 'cidr', 'netmask', 'calculator', 'network', 'ipv4', 'ipv6'],
-            'url' => '/tools/ip-calculator'
+            'url' => '/tool/ip-calculator.php'
         ],
         [
             'id' => 'traceroute',
@@ -46,7 +46,7 @@ class ToolSearchController {
             'endpoint' => '/api/v1/tools/traceroute',
             'cli_command' => 'veribits traceroute example.com',
             'keywords' => ['traceroute', 'trace', 'route', 'hops', 'network', 'path', 'latency'],
-            'url' => '/tools/traceroute'
+            'url' => '/tool/visual-traceroute.php'
         ],
         [
             'id' => 'bgp-intelligence',
@@ -56,7 +56,7 @@ class ToolSearchController {
             'endpoint' => '/api/v1/tools/bgp',
             'cli_command' => 'veribits bgp AS15169',
             'keywords' => ['bgp', 'as', 'autonomous system', 'routing', 'prefix', 'asn'],
-            'url' => '/tools/bgp'
+            'url' => '/tool/bgp-intelligence.php'
         ],
 
         // Crypto & Security Tools
@@ -68,7 +68,7 @@ class ToolSearchController {
             'endpoint' => '/api/v1/tools/pgp',
             'cli_command' => 'veribits pgp encrypt --key public.key message.txt',
             'keywords' => ['pgp', 'gpg', 'encrypt', 'decrypt', 'sign', 'verify', 'openpgp', 'keys'],
-            'url' => '/tools/pgp'
+            'url' => '/tool/pgp-validator.php'
         ],
         [
             'id' => 'ssl-check',
@@ -78,7 +78,7 @@ class ToolSearchController {
             'endpoint' => '/api/v1/tools/ssl-check',
             'cli_command' => 'veribits ssl-check example.com',
             'keywords' => ['ssl', 'tls', 'certificate', 'https', 'security', 'cert', 'chain'],
-            'url' => '/tools/ssl-check'
+            'url' => '/tool/cert-converter.php'
         ],
         [
             'id' => 'ssl-generator',
@@ -88,7 +88,7 @@ class ToolSearchController {
             'endpoint' => '/api/v1/tools/ssl-generate',
             'cli_command' => 'veribits ssl-gen --domain example.com',
             'keywords' => ['ssl', 'certificate', 'generate', 'self-signed', 'cert', 'create'],
-            'url' => '/tools/ssl-generator'
+            'url' => '/tool/ssl-generator.php'
         ],
         [
             'id' => 'ssl-chain-resolver',
@@ -98,7 +98,7 @@ class ToolSearchController {
             'endpoint' => '/api/v1/ssl/resolve-chain',
             'cli_command' => 'veribits ssl:resolve-chain --url example.com',
             'keywords' => ['ssl', 'certificate', 'chain', 'intermediate', 'root', 'aia', 'resolver', 'pkcs12', 'pkcs7', 'pem', 'pfx', 'p12', 'p7b', 'bundle', 'key verification', 'private key'],
-            'url' => '/tools/ssl-chain-resolver'
+            'url' => '/tool/cert-converter.php'
         ],
         [
             'id' => 'jwt',
@@ -108,7 +108,7 @@ class ToolSearchController {
             'endpoint' => '/api/v1/tools/jwt',
             'cli_command' => 'veribits jwt decode <token>',
             'keywords' => ['jwt', 'json', 'token', 'decode', 'verify', 'authentication', 'auth'],
-            'url' => '/tools/jwt'
+            'url' => '/tool/jwt-debugger.php'
         ],
         [
             'id' => 'crypto-validate',
@@ -118,7 +118,7 @@ class ToolSearchController {
             'endpoint' => '/api/v1/tools/crypto-validate',
             'cli_command' => 'veribits crypto-validate <address>',
             'keywords' => ['crypto', 'cryptocurrency', 'bitcoin', 'ethereum', 'validate', 'address'],
-            'url' => '/tools/crypto'
+            'url' => '/tool/crypto-validator.php'
         ],
 
         // File Tools
@@ -130,7 +130,7 @@ class ToolSearchController {
             'endpoint' => '/api/v1/tools/file-magic',
             'cli_command' => 'veribits file-magic file.bin',
             'keywords' => ['file', 'magic', 'signature', 'type', 'identify', 'mimetype', 'header'],
-            'url' => '/tools/file-magic'
+            'url' => '/tool/file-magic.php'
         ],
         [
             'id' => 'file-signature',
@@ -140,7 +140,7 @@ class ToolSearchController {
             'endpoint' => '/api/v1/verify/file-signature',
             'cli_command' => 'veribits verify-signature file.exe',
             'keywords' => ['file', 'signature', 'verify', 'digital', 'sign', 'authenticode'],
-            'url' => '/tools/file-signature'
+            'url' => '/tool/code-signing.php'
         ],
         [
             'id' => 'malware-scan',
@@ -150,7 +150,7 @@ class ToolSearchController {
             'endpoint' => '/api/v1/verify/malware',
             'cli_command' => 'veribits malware-scan file.exe',
             'keywords' => ['malware', 'virus', 'scan', 'antivirus', 'security', 'threat'],
-            'url' => '/tools/malware-scan'
+            'url' => '/tool/file-magic.php'
         ],
         [
             'id' => 'archive-inspection',
@@ -160,7 +160,7 @@ class ToolSearchController {
             'endpoint' => '/api/v1/inspect/archive',
             'cli_command' => 'veribits inspect-archive file.zip',
             'keywords' => ['archive', 'zip', 'tar', 'inspect', 'extract', 'contents'],
-            'url' => '/tools/archive-inspection'
+            'url' => '/tool/file-magic.php'
         ],
         [
             'id' => 'steganography',
@@ -170,7 +170,7 @@ class ToolSearchController {
             'endpoint' => '/api/v1/tools/steganography',
             'cli_command' => 'veribits stego hide --image photo.png --message secret.txt',
             'keywords' => ['steganography', 'stego', 'hide', 'extract', 'image', 'secret', 'data'],
-            'url' => '/tools/stego'
+            'url' => '/tool/steganography.php'
         ],
         [
             'id' => 'code-signing',
@@ -180,7 +180,7 @@ class ToolSearchController {
             'endpoint' => '/api/v1/tools/code-sign',
             'cli_command' => 'veribits code-sign --cert cert.pfx file.exe',
             'keywords' => ['code', 'signing', 'authenticode', 'sign', 'executable', 'binary'],
-            'url' => '/tools/code-signing'
+            'url' => '/tool/code-signing.php'
         ],
         [
             'id' => 'breach-check',
@@ -190,7 +190,7 @@ class ToolSearchController {
             'endpoint' => '/api/v1/hibp/check-email',
             'cli_command' => 'veribits breach:email user@example.com',
             'keywords' => ['breach', 'hibp', 'haveibeenpwned', 'password', 'email', 'pwned', 'compromised', 'leak', 'security', 'data breach'],
-            'url' => '/tools/breach-check'
+            'url' => '/tool/security-headers.php'
         ],
         [
             'id' => 'email-verification',
@@ -200,7 +200,7 @@ class ToolSearchController {
             'endpoint' => '/api/v1/email',
             'cli_command' => 'veribits email:score example.com',
             'keywords' => ['email', 'spf', 'dkim', 'dmarc', 'mx', 'mail', 'deliverability', 'disposable', 'blacklist', 'rbl', 'postmaster', 'authentication', 'sender', 'verification', 'wizard'],
-            'url' => '/tools/email-verification'
+            'url' => '/tool/smtp-relay-check.php'
         ],
         [
             'id' => 'email-dea-check',
@@ -210,7 +210,7 @@ class ToolSearchController {
             'endpoint' => '/api/v1/email/check-disposable',
             'cli_command' => 'veribits email:check-dea user@example.com',
             'keywords' => ['email', 'disposable', 'temporary', 'dea', 'fake', 'throwaway', 'spam', 'fraud'],
-            'url' => '/tools/email-verification?tab=dea'
+            'url' => '/tool/smtp-relay-check.php'
         ],
         [
             'id' => 'email-spf',
@@ -220,7 +220,7 @@ class ToolSearchController {
             'endpoint' => '/api/v1/email/analyze-spf',
             'cli_command' => 'veribits email:spf example.com',
             'keywords' => ['email', 'spf', 'sender policy framework', 'dns', 'authentication', 'mail server', 'authorization'],
-            'url' => '/tools/email-verification?tab=spf'
+            'url' => '/tool/smtp-relay-check.php'
         ],
         [
             'id' => 'email-dkim',
@@ -230,7 +230,7 @@ class ToolSearchController {
             'endpoint' => '/api/v1/email/analyze-dkim',
             'cli_command' => 'veribits email:dkim example.com',
             'keywords' => ['email', 'dkim', 'domainkeys', 'authentication', 'signature', 'selector', 'public key'],
-            'url' => '/tools/email-verification?tab=dkim'
+            'url' => '/tool/smtp-relay-check.php'
         ],
         [
             'id' => 'email-dmarc',
@@ -240,7 +240,7 @@ class ToolSearchController {
             'endpoint' => '/api/v1/email/analyze-dmarc',
             'cli_command' => 'veribits email:dmarc example.com',
             'keywords' => ['email', 'dmarc', 'authentication', 'policy', 'spoofing', 'phishing', 'reporting'],
-            'url' => '/tools/email-verification?tab=dmarc'
+            'url' => '/tool/smtp-relay-check.php'
         ],
         [
             'id' => 'email-mx',
@@ -250,7 +250,7 @@ class ToolSearchController {
             'endpoint' => '/api/v1/email/analyze-mx',
             'cli_command' => 'veribits email:mx example.com',
             'keywords' => ['email', 'mx', 'mail server', 'dns', 'tls', 'starttls', 'configuration'],
-            'url' => '/tools/email-verification?tab=mx'
+            'url' => '/tool/smtp-relay-check.php'
         ],
         [
             'id' => 'email-header-analyzer',
@@ -260,7 +260,7 @@ class ToolSearchController {
             'endpoint' => '/api/v1/email/analyze-headers',
             'cli_command' => 'veribits email:headers',
             'keywords' => ['email', 'headers', 'parse', 'authentication', 'routing', 'trace', 'received'],
-            'url' => '/tools/email-verification?tab=headers'
+            'url' => '/tool/smtp-relay-check.php'
         ],
         [
             'id' => 'email-blacklist',
@@ -270,7 +270,7 @@ class ToolSearchController {
             'endpoint' => '/api/v1/email/check-blacklists',
             'cli_command' => 'veribits email:blacklist example.com',
             'keywords' => ['email', 'blacklist', 'rbl', 'spam', 'spamhaus', 'spamcop', 'sorbs', 'dnsbl'],
-            'url' => '/tools/email-verification?tab=blacklist'
+            'url' => '/tool/rbl-check.php'
         ],
         [
             'id' => 'email-deliverability',
@@ -280,7 +280,7 @@ class ToolSearchController {
             'endpoint' => '/api/v1/email/deliverability-score',
             'cli_command' => 'veribits email:score example.com',
             'keywords' => ['email', 'deliverability', 'score', 'reputation', 'analysis', 'comprehensive'],
-            'url' => '/tools/email-verification?tab=score'
+            'url' => '/tool/smtp-relay-check.php'
         ],
         [
             'id' => 'spf-wizard',
@@ -290,7 +290,7 @@ class ToolSearchController {
             'endpoint' => '/tools/email-verification',
             'cli_command' => 'veribits email:spf',
             'keywords' => ['email', 'spf', 'wizard', 'generator', 'create', 'build'],
-            'url' => '/tools/email-verification?tab=spf-wizard'
+            'url' => '/tool/smtp-relay-check.php'
         ],
         [
             'id' => 'dmarc-wizard',
@@ -300,10 +300,20 @@ class ToolSearchController {
             'endpoint' => '/tools/email-verification',
             'cli_command' => 'veribits email:dmarc',
             'keywords' => ['email', 'dmarc', 'wizard', 'generator', 'create', 'build', 'policy'],
-            'url' => '/tools/email-verification?tab=dmarc-wizard'
+            'url' => '/tool/smtp-relay-check.php'
         ],
 
         // Developer Tools
+        [
+            'id' => 'regex-tester',
+            'name' => 'Regex Tester',
+            'category' => 'Developer',
+            'description' => 'Test regular expressions with real-time pattern matching',
+            'endpoint' => '/api/v1/tools/regex-test',
+            'cli_command' => 'veribits regex-test "pattern" "text"',
+            'keywords' => ['regex', 'regular expression', 'pattern', 'test', 'match', 'regexp', 'regexp tester'],
+            'url' => '/tool/regex-tester.php'
+        ],
         [
             'id' => 'base64',
             'name' => 'Base64 Encoder/Decoder',
@@ -312,7 +322,7 @@ class ToolSearchController {
             'endpoint' => '/api/v1/tools/base64',
             'cli_command' => 'veribits base64 encode "hello world"',
             'keywords' => ['base64', 'encode', 'decode', 'encoding', 'conversion'],
-            'url' => '/tools/base64'
+            'url' => '/tool/url-encoder.php'
         ],
         [
             'id' => 'hash',
@@ -322,7 +332,7 @@ class ToolSearchController {
             'endpoint' => '/api/v1/tools/hash',
             'cli_command' => 'veribits hash --algo sha256 file.txt',
             'keywords' => ['hash', 'md5', 'sha1', 'sha256', 'sha512', 'checksum', 'digest'],
-            'url' => '/tools/hash'
+            'url' => '/tool/hash-validator.php'
         ],
 
         // Cloud & Infrastructure Tools
@@ -334,7 +344,89 @@ class ToolSearchController {
             'endpoint' => '/api/v1/tools/cloud-storage',
             'cli_command' => 'veribits cloud-storage scan --provider aws --search "config.json"',
             'keywords' => ['cloud', 'storage', 's3', 'aws', 'azure', 'gcs', 'blob', 'bucket', 'security', 'audit', 'digital ocean', 'spaces', 'search', 'enterprise'],
-            'url' => '/tools/cloud-storage-auditor'
+            'url' => '/tool/security-headers.php'
+        ],
+
+        // NEW Enterprise Security Tools
+        [
+            'id' => 'iam-policy-analyzer',
+            'name' => 'AWS IAM Policy Analyzer',
+            'category' => 'Cloud Security',
+            'description' => 'Analyze AWS IAM policies for security risks, overpermissive wildcards, public access, and admin privileges. Get actionable recommendations with 0-100 risk scoring.',
+            'endpoint' => '/api/v1/security/iam-policy/analyze',
+            'cli_command' => 'veribits iam analyze policy.json',
+            'keywords' => ['iam', 'aws', 'policy', 'permissions', 'access', 'security', 'cloud', 'risk', 'wildcards', 'admin', 'privilege', 'least privilege'],
+            'url' => '/tool/iam-policy-analyzer.php'
+        ],
+        [
+            'id' => 'secrets-scanner',
+            'name' => 'Secrets Scanner',
+            'category' => 'Security',
+            'description' => 'Detect hardcoded secrets, API keys, passwords, private keys, AWS credentials, GitHub tokens in code, config files, and Git repositories.',
+            'endpoint' => '/api/v1/security/secrets/scan',
+            'cli_command' => 'veribits secrets scan file.js',
+            'keywords' => ['secrets', 'api key', 'password', 'credentials', 'aws', 'github', 'token', 'private key', 'leak', 'exposure', 'hardcoded'],
+            'url' => '/tool/secrets-scanner.php'
+        ],
+        [
+            'id' => 'db-connection-auditor',
+            'name' => 'Database Connection String Auditor',
+            'category' => 'Database Security',
+            'description' => 'Audit database connection strings for security issues: plaintext passwords, disabled SSL, public IPs, default ports. Supports PostgreSQL, MySQL, MongoDB, Redis.',
+            'endpoint' => '/api/v1/security/db-connection/audit',
+            'cli_command' => 'veribits db-audit "postgresql://user:pass@host/db"',
+            'keywords' => ['database', 'connection string', 'postgresql', 'mysql', 'mongodb', 'redis', 'password', 'ssl', 'tls', 'security', 'credentials'],
+            'url' => '/tool/db-connection-auditor.php'
+        ],
+        [
+            'id' => 'docker-image-scanner',
+            'name' => 'Docker Image Vulnerability Scanner',
+            'category' => 'Container Security',
+            'description' => 'Scan Docker images for CVEs, malware, secrets, and security misconfigurations. Supports Docker Hub, ECR, GCR, Azure ACR. Generate SBOM reports.',
+            'endpoint' => '/api/v1/security/docker/scan',
+            'cli_command' => 'veribits docker scan nginx:latest',
+            'keywords' => ['docker', 'container', 'image', 'vulnerability', 'cve', 'scan', 'security', 'ecr', 'gcr', 'acr', 'sbom'],
+            'url' => '/tool/docker-scanner.php'
+        ],
+        [
+            'id' => 'terraform-scanner',
+            'name' => 'Terraform/IaC Security Scanner',
+            'category' => 'Cloud Security',
+            'description' => 'Scan Terraform, CloudFormation, Pulumi for security misconfigurations: public S3 buckets, open security groups, unencrypted databases. CIS compliance checks.',
+            'endpoint' => '/api/v1/security/terraform/scan',
+            'cli_command' => 'veribits terraform scan main.tf',
+            'keywords' => ['terraform', 'iac', 'infrastructure as code', 'cloudformation', 'pulumi', 'security', 'misconfiguration', 'cis', 'compliance'],
+            'url' => '/tool/terraform-scanner.php'
+        ],
+        [
+            'id' => 'k8s-validator',
+            'name' => 'Kubernetes Manifest Validator',
+            'category' => 'Container Security',
+            'description' => 'Validate Kubernetes YAML manifests for security issues: privileged containers, host path mounts, missing resource limits, RBAC misconfigurations.',
+            'endpoint' => '/api/v1/security/k8s/validate',
+            'cli_command' => 'veribits k8s validate deployment.yaml',
+            'keywords' => ['kubernetes', 'k8s', 'manifest', 'yaml', 'security', 'pod', 'deployment', 'rbac', 'container', 'privileged'],
+            'url' => '/tool/k8s-validator.php'
+        ],
+        [
+            'id' => 'api-security-auditor',
+            'name' => 'API Security Auditor',
+            'category' => 'API Security',
+            'description' => 'Audit OpenAPI/Swagger specs for OWASP API Top 10 issues: missing authentication, no rate limiting, PII exposure, security misconfigurations.',
+            'endpoint' => '/api/v1/security/api/audit',
+            'cli_command' => 'veribits api audit openapi.yaml',
+            'keywords' => ['api', 'openapi', 'swagger', 'rest', 'security', 'owasp', 'authentication', 'rate limit', 'pii'],
+            'url' => '/tool/api-auditor.php'
+        ],
+        [
+            'id' => 'sbom-generator',
+            'name' => 'SBOM Generator',
+            'category' => 'Supply Chain Security',
+            'description' => 'Generate Software Bill of Materials (SBOM) from Docker images, package.json, requirements.txt. CycloneDX and SPDX formats. Scan dependencies for CVEs.',
+            'endpoint' => '/api/v1/security/sbom/generate',
+            'cli_command' => 'veribits sbom generate package.json',
+            'keywords' => ['sbom', 'software bill of materials', 'dependencies', 'cve', 'vulnerability', 'supply chain', 'cyclonedx', 'spdx'],
+            'url' => '/tool/sbom-generator.php'
         ],
     ];
 
