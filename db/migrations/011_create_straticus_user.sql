@@ -17,8 +17,8 @@ BEGIN
 
     IF v_user_id IS NULL THEN
         -- Create new user
-        INSERT INTO users (email, password_hash, status, email_verified)
-        VALUES ('straticus1@gmail.com', v_password_hash, 'active', true)
+        INSERT INTO users (email, password_hash, status)
+        VALUES ('straticus1@gmail.com', v_password_hash, 'active')
         RETURNING id INTO v_user_id;
 
         RAISE NOTICE 'Created user: straticus1@gmail.com';

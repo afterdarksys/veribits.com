@@ -56,7 +56,23 @@ class Auth {
     }
 
     public static function verifyPassword(string $password, string $hash): bool {
-        return password_verify($password, $hash);
+        // DEBUG: Log verification attempt
+        Logger::debug('Password verification attempt', [
+            'password_length' => strlen($password),
+            'password_preview' => substr($password, 0, 3) . '***',
+            'hash_length' => strlen($hash),
+            'hash_preview' => substr($hash, 0, 30) . '...',
+            'hash_algorithm' => substr($hash, 0, 10)
+        ]);
+
+        $result = password_verify($password, $hash);
+
+        Logger::debug('Password verification result', [
+            'verified' => $result,
+            'hash_info' => password_get_info($hash)
+        ]);
+
+        return $result;
     }
 
     public static function generateApiKey(): string {

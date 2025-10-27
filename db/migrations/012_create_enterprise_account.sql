@@ -17,8 +17,8 @@ BEGIN
 
     IF v_user_id IS NULL THEN
         -- Create new enterprise user
-        INSERT INTO users (email, password_hash, status, email_verified)
-        VALUES ('enterprise@veribits.com', v_password_hash, 'active', true)
+        INSERT INTO users (email, password_hash, status)
+        VALUES ('enterprise@veribits.com', v_password_hash, 'active')
         RETURNING id INTO v_user_id;
 
         RAISE NOTICE 'Created enterprise user: enterprise@veribits.com (ID: %)', v_user_id;
