@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Security Headers Analyzer - VeriBits</title>
-    <link rel="stylesheet" href="/assets/css/main.css">
+    <link rel="stylesheet" href="/assets/css/main.css?v=<?= time() ?>">
     <style>
         .score-badge {
             display: inline-block;
@@ -44,8 +44,8 @@
                 <li><a href="/tools.php">Tools</a></li>
                 <li><a href="/pricing.php">Pricing</a></li>
                 <li><a href="/about.php">About</a></li>
-                <li><a href="/login.php">Login</a></li>
-                <li><a href="/signup.php" class="btn btn-primary">Sign Up</a></li>
+                <li data-auth-item="true"><a href="/login.php">Login</a></li>
+                <li data-auth-item="true"><a href="/signup.php" class="btn btn-primary">Sign Up</a></li>
             </ul>
         </div>
     </nav>
@@ -123,7 +123,7 @@
         </div>
     </footer>
 
-    <script src="/assets/js/main.js"></script>
+    <script src="/assets/js/main.js?v=<?= time() ?>"></script>
     <script>
         async function analyzeHeaders() {
             const url = document.getElementById('url').value.trim();
@@ -150,7 +150,7 @@
             document.getElementById('recommendations-content').innerHTML = '<div class="spinner"></div>';
 
             try {
-                const data = await apiRequest('/tools/security-headers', {
+                const data = await apiRequest('/api/v1/tools/security-headers', {
                     method: 'POST',
                     body: JSON.stringify({ url })
                 });

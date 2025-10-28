@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>PGP Validator - VeriBits</title>
-    <link rel="stylesheet" href="/assets/css/main.css">
+    <link rel="stylesheet" href="/assets/css/main.css?v=<?= time() ?>">
 </head>
 <body>
     <nav>
@@ -14,8 +14,8 @@
                 <li><a href="/tools.php">Tools</a></li>
                 <li><a href="/pricing.php">Pricing</a></li>
                 <li><a href="/about.php">About</a></li>
-                <li><a href="/login.php">Login</a></li>
-                <li><a href="/signup.php" class="btn btn-primary">Sign Up</a></li>
+                <li data-auth-item="true"><a href="/login.php">Login</a></li>
+                <li data-auth-item="true"><a href="/signup.php" class="btn btn-primary">Sign Up</a></li>
             </ul>
         </div>
     </nav>
@@ -118,7 +118,7 @@
         </div>
     </footer>
 
-    <script src="/assets/js/main.js"></script>
+    <script src="/assets/js/main.js?v=<?= time() ?>"></script>
     <script>
         let selectedType = 'key';
 
@@ -156,7 +156,7 @@
             resultsContent.innerHTML = '<div style="text-align: center; padding: 2rem;"><div class="spinner" style="margin: 0 auto;"></div><p style="margin-top: 1rem; color: var(--text-secondary);">Validating PGP key...</p></div>';
 
             try {
-                const data = await apiRequest('/tools/pgp-validate', {
+                const data = await apiRequest('/api/v1/tools/pgp-validate', {
                     method: 'POST',
                     body: JSON.stringify({
                         public_key: publicKey,
@@ -191,7 +191,7 @@
             resultsContent.innerHTML = '<div style="text-align: center; padding: 2rem;"><div class="spinner" style="margin: 0 auto;"></div><p style="margin-top: 1rem; color: var(--text-secondary);">Verifying signature...</p></div>';
 
             try {
-                const data = await apiRequest('/tools/pgp-validate', {
+                const data = await apiRequest('/api/v1/tools/pgp-validate', {
                     method: 'POST',
                     body: JSON.stringify({
                         signed_message: signedMessage,

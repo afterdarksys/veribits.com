@@ -1,0 +1,3 @@
+# Core dependencies (none - uses Python standard library only)
+# Build/compilation dependencies
+pyinstaller>=5.0

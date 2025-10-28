@@ -262,7 +262,7 @@ class NetworkToolsController
     }
 
     /**
-     * Check RBL status for an IP address
+     * Check RBL status for an IP address or hostname
      */
     public function rblCheck(): void
     {
@@ -277,17 +277,37 @@ class NetworkToolsController
         }
 
         $input = json_decode(file_get_contents('php://input'), true);
-        $ip = $input['ip'] ?? '';
+        $target = $input['ip'] ?? '';
+        $originalTarget = $target;
+        $resolvedFrom = null;
 
-        if (empty($ip)) {
-            Response::error('IP address is required', 400);
+        if (empty($target)) {
+            Response::error('IP address or hostname is required', 400);
             return;
         }
 
-        if (!filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4)) {
-            Response::error('Invalid IPv4 address', 400);
-            return;
+        // Check if input is a valid IPv4 address
+        if (!filter_var($target, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4)) {
+            // Not an IP - try to resolve as hostname
+            $resolvedIp = @gethostbyname($target);
+
+            // gethostbyname returns the hostname itself if resolution fails
+            if ($resolvedIp === $target) {
+                Response::error('Invalid IPv4 address or hostname could not be resolved', 400);
+                return;
+            }
+
+            // Verify the resolved IP is valid IPv4
+            if (!filter_var($resolvedIp, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4)) {
+                Response::error('Hostname resolved to invalid IPv4 address', 400);
+                return;
+            }
+
+            $resolvedFrom = $target;
+            $target = $resolvedIp;
         }
+
+        $ip = $target;
 
         try {
             $rbls = [
@@ -326,14 +346,22 @@ class NetworkToolsController
                 RateLimit::incrementAnonymousScan($auth['ip_address']);
             }
 
-            Response::success('RBL check completed', [
+            $responseData = [
                 'ip_address' => $ip,
                 'listed' => count($listings) > 0,
                 'blacklists_checked' => count($checkedRbls),
                 'blacklists_found' => count($listings),
                 'listings' => $listings,
                 'checked_rbls' => $checkedRbls
-            ]);
+            ];
+
+            // Include resolution info if hostname was provided
+            if ($resolvedFrom !== null) {
+                $responseData['hostname'] = $resolvedFrom;
+                $responseData['resolved_to'] = $ip;
+            }
+
+            Response::success('RBL check completed', $responseData);
 
         } catch (\Exception $e) {
             Response::error('RBL check failed: ' . $e->getMessage(), 500);

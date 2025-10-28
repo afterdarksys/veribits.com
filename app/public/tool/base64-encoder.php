@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Base64 Encoder/Decoder - VeriBits</title>
-    <link rel="stylesheet" href="/assets/css/main.css">
+    <link rel="stylesheet" href="/assets/css/main.css?v=<?= time() ?>">
     <style>
         .image-preview {
             max-width: 100%;
@@ -45,8 +45,8 @@
                 <li><a href="/tools.php">Tools</a></li>
                 <li><a href="/pricing.php">Pricing</a></li>
                 <li><a href="/about.php">About</a></li>
-                <li><a href="/login.php">Login</a></li>
-                <li><a href="/signup.php" class="btn btn-primary">Sign Up</a></li>
+                <li data-auth-item="true"><a href="/login.php">Login</a></li>
+                <li data-auth-item="true"><a href="/signup.php" class="btn btn-primary">Sign Up</a></li>
             </ul>
         </div>
     </nav>
@@ -213,7 +213,7 @@
         </div>
     </footer>
 
-    <script src="/assets/js/main.js"></script>
+    <script src="/assets/js/main.js?v=<?= time() ?>"></script>
     <script>
         let selectedOperation = 'encode';
         let selectedFile = null;
@@ -307,7 +307,7 @@
             resultsContent.innerHTML = '<div style="text-align: center; padding: 2rem;"><div class="spinner" style="margin: 0 auto;"></div><p style="margin-top: 1rem; color: var(--text-secondary);">Encoding...</p></div>';
 
             try {
-                const data = await apiRequest('/tools/base64-encoder', {
+                const data = await apiRequest('/api/v1/tools/base64-encoder', {
                     method: 'POST',
                     body: JSON.stringify({
                         operation: 'encode',
@@ -339,7 +339,7 @@
             resultsContent.innerHTML = '<div style="text-align: center; padding: 2rem;"><div class="spinner" style="margin: 0 auto;"></div><p style="margin-top: 1rem; color: var(--text-secondary);">Decoding...</p></div>';
 
             try {
-                const data = await apiRequest('/tools/base64-encoder', {
+                const data = await apiRequest('/api/v1/tools/base64-encoder', {
                     method: 'POST',
                     body: JSON.stringify({
                         operation: 'decode',
@@ -373,7 +373,7 @@
                     const base64 = e.target.result.split(',')[1]; // Remove data URL prefix
 
                     try {
-                        const data = await apiRequest('/tools/base64-encoder', {
+                        const data = await apiRequest('/api/v1/tools/base64-encoder', {
                             method: 'POST',
                             body: JSON.stringify({
                                 operation: 'encode_file',

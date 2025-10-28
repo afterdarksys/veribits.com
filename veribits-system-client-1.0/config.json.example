@@ -1,0 +1,5 @@
+{
+  "endpoint_url": "https://api.example.com/hashes/upload",
+  "email": "user@example.com",
+  "api_key": "your-api-key-here"
+}

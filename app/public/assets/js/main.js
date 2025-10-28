@@ -144,3 +144,51 @@ function requireAuth() {
 if (window.location.pathname.includes('dashboard') || window.location.pathname.includes('settings')) {
     requireAuth();
 }
+
+// Update navigation based on auth status
+function updateNavigation() {
+    const nav = document.querySelector('nav ul');
+    if (!nav) return;
+
+    const isAuth = isAuthenticated();
+    const currentPath = window.location.pathname;
+
+    // Remove existing auth-related nav items
+    const authItems = nav.querySelectorAll('[data-auth-item]');
+    authItems.forEach(item => item.remove());
+
+    if (isAuth) {
+        // User is logged in - show Dashboard and Logout
+        const dashboardLi = document.createElement('li');
+        dashboardLi.setAttribute('data-auth-item', 'true');
+        dashboardLi.innerHTML = '<a href="/dashboard.php">Dashboard</a>';
+        nav.appendChild(dashboardLi);
+
+        const logoutLi = document.createElement('li');
+        logoutLi.setAttribute('data-auth-item', 'true');
+        logoutLi.innerHTML = '<a href="#" onclick="logout(); return false;" class="btn btn-secondary">Logout</a>';
+        nav.appendChild(logoutLi);
+    } else {
+        // User is not logged in - show Login and Sign Up
+        if (!currentPath.includes('login.php')) {
+            const loginLi = document.createElement('li');
+            loginLi.setAttribute('data-auth-item', 'true');
+            loginLi.innerHTML = '<a href="/login.php">Login</a>';
+            nav.appendChild(loginLi);
+        }
+
+        if (!currentPath.includes('signup.php')) {
+            const signupLi = document.createElement('li');
+            signupLi.setAttribute('data-auth-item', 'true');
+            signupLi.innerHTML = '<a href="/signup.php" class="btn btn-primary">Sign Up</a>';
+            nav.appendChild(signupLi);
+        }
+    }
+}
+
+// Run on page load and with a slight delay to ensure localStorage is ready
+document.addEventListener('DOMContentLoaded', () => {
+    updateNavigation();
+    // Run again after a short delay to catch any timing issues
+    setTimeout(updateNavigation, 100);
+});

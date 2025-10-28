@@ -1,0 +1,25 @@
+# Build artifacts
+build/
+dist/
+*.spec
+*.pyc
+__pycache__/
+
+# Output files
+*.json
+!package.json
+
+# Virtual environments
+venv/
+env/
+.venv/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
