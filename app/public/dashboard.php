@@ -4,7 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard - VeriBits</title>
-    <link rel="stylesheet" href="/assets/css/main.css">
+    <link rel="stylesheet" href="/assets/css/main.css?v=<?= time() ?>">
+
+    <!-- DNS Science Analytics -->
+    <script src="https://www.dnsscience.io/static/js/analytics_track.js"
+            data-token="dsa_live_d51afb46c704fe2594c15ed82717cb7703c8ab5c7185e481"
+            data-endpoint="https://www.dnsscience.io/api/analytics/track"
+            async></script>
 </head>
 <body>
     <nav>
@@ -61,6 +67,21 @@
                     <a href="/settings.php" class="btn btn-secondary">Settings</a>
                 </div>
             </div>
+
+            <div class="feature-card" style="margin-top: 2rem;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                    <h2 style="margin: 0;">API Keys</h2>
+                    <button onclick="createNewApiKey()" class="btn btn-primary">+ Create New Key</button>
+                </div>
+
+                <p style="color: var(--text-secondary); margin-bottom: 1.5rem;">
+                    Use API keys to authenticate your requests to the VeriBits API. Keep your keys secure and never share them publicly.
+                </p>
+
+                <div id="api-keys-list">
+                    <div class="spinner"></div>
+                </div>
+            </div>
         </div>
     </section>
 
@@ -78,8 +99,8 @@
         </div>
     </footer>
 
-    <script src="/assets/js/main.js"></script>
-    <script src="/assets/js/dashboard.js"></script>
+    <script src="/assets/js/main.js?v=<?= time() ?>"></script>
+    <script src="/assets/js/dashboard.js?v=<?= time() ?>"></script>
 </body>
 </html>
 <!-- version hash: 86db590587abafc7e6e5e85429d703db3c8280a29dc86a360909573de77186c3 -->

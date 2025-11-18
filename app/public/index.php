@@ -81,6 +81,17 @@ use VeriBits\Controllers\DatabaseConnectionController;
 use VeriBits\Controllers\PcapAnalyzerController;
 use VeriBits\Controllers\FirewallController;
 use VeriBits\Controllers\DnsConverterController;
+use VeriBits\Controllers\SystemScansController;
+use VeriBits\Controllers\PasswordRecoveryController;
+use VeriBits\Controllers\HashLookupController;
+use VeriBits\Controllers\DiskForensicsController;
+use VeriBits\Controllers\OsqueryController;
+use VeriBits\Controllers\NetcatController;
+use VeriBits\Controllers\ProSubscriptionController;
+use VeriBits\Controllers\OAuth2Controller;
+use VeriBits\Controllers\WebhooksController;
+use VeriBits\Controllers\MalwareDetonationController;
+use VeriBits\Controllers\EmailController;
 
 // Initialize configuration
 Config::load();
@@ -763,6 +774,206 @@ try {
     }
     if ($uri === '/api/v1/firewall/export' && $method === 'GET') {
         (new FirewallController())->export();
+        exit;
+    }
+
+    // System Scans endpoints (protected - requires API key)
+    if ($uri === '/api/v1/system-scans' && $method === 'POST') {
+        (new SystemScansController())->create();
+        exit;
+    }
+    if ($uri === '/api/v1/system-scans' && $method === 'GET') {
+        (new SystemScansController())->list();
+        exit;
+    }
+    if (preg_match('#^/api/v1/system-scans/(\d+)$#', $uri, $m) && $method === 'GET') {
+        $_GET['id'] = $m[1];
+        (new SystemScansController())->get();
+        exit;
+    }
+    if (preg_match('#^/api/v1/system-scans/(\d+)$#', $uri, $m) && $method === 'DELETE') {
+        $_GET['id'] = $m[1];
+        (new SystemScansController())->delete();
+        exit;
+    }
+
+    // Password Recovery endpoints (supports anonymous with rate limiting)
+    if ($uri === '/api/v1/tools/password-recovery/remove' && $method === 'POST') {
+        (new PasswordRecoveryController())->removePassword();
+        exit;
+    }
+    if ($uri === '/api/v1/tools/password-recovery/crack' && $method === 'POST') {
+        (new PasswordRecoveryController())->crackPassword();
+        exit;
+    }
+    if ($uri === '/api/v1/tools/password-recovery/analyze' && $method === 'POST') {
+        (new PasswordRecoveryController())->analyzeFile();
+        exit;
+    }
+
+    // Hash Lookup endpoints (supports anonymous with rate limiting)
+    if ($uri === '/api/v1/tools/hash-lookup' && $method === 'POST') {
+        (new HashLookupController())->lookup();
+        exit;
+    }
+    if ($uri === '/api/v1/tools/hash-lookup/batch' && $method === 'POST') {
+        (new HashLookupController())->batchLookup();
+        exit;
+    }
+    if ($uri === '/api/v1/tools/hash-lookup/identify' && $method === 'POST') {
+        (new HashLookupController())->identifyHash();
+        exit;
+    }
+    if ($uri === '/api/v1/tools/email-extractor' && $method === 'POST') {
+        (new HashLookupController())->extractEmails();
+        exit;
+    }
+
+    // Netcat endpoint
+    if ($uri === '/api/v1/tools/netcat' && $method === 'POST') {
+        (new NetcatController())->execute();
+        exit;
+    }
+
+    // Pro Subscription endpoints
+    if ($uri === '/api/v1/pro/validate' && $method === 'POST') {
+        (new ProSubscriptionController())->validate();
+        exit;
+    }
+    if ($uri === '/api/v1/pro/status' && $method === 'GET') {
+        (new ProSubscriptionController())->status();
+        exit;
+    }
+    if ($uri === '/api/v1/pro/generate' && $method === 'POST') {
+        (new ProSubscriptionController())->generate();
+        exit;
+    }
+
+    // OAuth2 endpoints
+    if ($uri === '/api/v1/oauth/authorize' && $method === 'GET') {
+        (new OAuth2Controller())->authorize();
+        exit;
+    }
+    if ($uri === '/api/v1/oauth/token' && $method === 'POST') {
+        (new OAuth2Controller())->token();
+        exit;
+    }
+    if ($uri === '/api/v1/oauth/revoke' && $method === 'POST') {
+        (new OAuth2Controller())->revoke();
+        exit;
+    }
+    if ($uri === '/api/v1/oauth/register' && $method === 'POST') {
+        (new OAuth2Controller())->register();
+        exit;
+    }
+
+    // Webhooks endpoints
+    if ($uri === '/api/v1/webhooks' && $method === 'POST') {
+        (new WebhooksController())->create();
+        exit;
+    }
+    if ($uri === '/api/v1/webhooks' && $method === 'GET') {
+        (new WebhooksController())->list();
+        exit;
+    }
+    if (preg_match('#^/api/v1/webhooks/(\d+)$#', $uri, $matches) && $method === 'GET') {
+        (new WebhooksController())->get();
+        exit;
+    }
+    if (preg_match('#^/api/v1/webhooks/(\d+)$#', $uri, $matches) && $method === 'PUT') {
+        (new WebhooksController())->update();
+        exit;
+    }
+    if (preg_match('#^/api/v1/webhooks/(\d+)$#', $uri, $matches) && $method === 'DELETE') {
+        (new WebhooksController())->delete();
+        exit;
+    }
+    if (preg_match('#^/api/v1/webhooks/(\d+)/deliveries$#', $uri, $matches) && $method === 'GET') {
+        (new WebhooksController())->deliveries();
+        exit;
+    }
+
+    // Malware Detonation endpoints
+    if ($uri === '/api/v1/malware/submit' && $method === 'POST') {
+        (new MalwareDetonationController())->submit();
+        exit;
+    }
+    if (preg_match('#^/api/v1/malware/status/(\d+)$#', $uri, $matches) && $method === 'GET') {
+        (new MalwareDetonationController())->status();
+        exit;
+    }
+    if (preg_match('#^/api/v1/malware/report/(\d+)$#', $uri, $matches) && $method === 'GET') {
+        (new MalwareDetonationController())->report();
+        exit;
+    }
+    if (preg_match('#^/api/v1/malware/screenshots/(\d+)$#', $uri, $matches) && $method === 'GET') {
+        (new MalwareDetonationController())->screenshots();
+        exit;
+    }
+    if (preg_match('#^/api/v1/malware/pcap/(\d+)$#', $uri, $matches) && $method === 'GET') {
+        (new MalwareDetonationController())->pcap();
+        exit;
+    }
+    if (preg_match('#^/api/v1/malware/iocs/(\d+)$#', $uri, $matches) && $method === 'GET') {
+        (new MalwareDetonationController())->iocs();
+        exit;
+    }
+
+    // Email endpoints
+    if ($uri === '/api/v1/email/test' && $method === 'POST') {
+        (new EmailController())->sendTest();
+        exit;
+    }
+    if ($uri === '/api/v1/email/welcome' && $method === 'POST') {
+        (new EmailController())->sendWelcome();
+        exit;
+    }
+    if ($uri === '/api/v1/email/stats' && $method === 'GET') {
+        (new EmailController())->getStats();
+        exit;
+    }
+    if ($uri === '/api/v1/email/broadcast' && $method === 'POST') {
+        (new EmailController())->sendBroadcast();
+        exit;
+    }
+
+    // Disk Forensics endpoints (requires authentication)
+    if ($uri === '/api/v1/forensics/disk/upload' && $method === 'POST') {
+        (new DiskForensicsController())->upload();
+        exit;
+    }
+    if ($uri === '/api/v1/forensics/disk/analyze' && $method === 'POST') {
+        (new DiskForensicsController())->analyze();
+        exit;
+    }
+    if ($uri === '/api/v1/forensics/disk/extract' && $method === 'POST') {
+        (new DiskForensicsController())->extractFile();
+        exit;
+    }
+    if ($uri === '/api/v1/forensics/disk/cleanup' && $method === 'POST') {
+        (new DiskForensicsController())->cleanup();
+        exit;
+    }
+
+    // osquery endpoints (requires authentication)
+    if ($uri === '/api/v1/osquery/execute' && $method === 'POST') {
+        (new OsqueryController())->execute();
+        exit;
+    }
+    if ($uri === '/api/v1/osquery/tables' && $method === 'GET') {
+        (new OsqueryController())->tables();
+        exit;
+    }
+    if ($uri === '/api/v1/osquery/schema' && $method === 'GET') {
+        (new OsqueryController())->schema();
+        exit;
+    }
+    if ($uri === '/api/v1/osquery/templates' && $method === 'GET') {
+        (new OsqueryController())->templates();
+        exit;
+    }
+    if ($uri === '/api/v1/osquery/pack' && $method === 'POST') {
+        (new OsqueryController())->runPack();
         exit;
     }
 

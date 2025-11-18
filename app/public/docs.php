@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Documentation - VeriBits</title>
-    <link rel="stylesheet" href="/assets/css/main.css">
+    <link rel="stylesheet" href="/assets/css/main.css?v=<?= time() ?>">
     <style>
         .docs-container {
             max-width: 1000px;
@@ -127,6 +127,12 @@
             border-left-color: #fbbf24;
         }
     </style>
+
+    <!-- DNS Science Analytics -->
+    <script src="https://www.dnsscience.io/static/js/analytics_track.js"
+            data-token="dsa_live_d51afb46c704fe2594c15ed82717cb7703c8ab5c7185e481"
+            data-endpoint="https://www.dnsscience.io/api/analytics/track"
+            async></script>
 </head>
 <body>
     <nav>
@@ -138,8 +144,8 @@
                 <li><a href="/docs.php" class="active">Docs</a></li>
                 <li><a href="/pricing.php">Pricing</a></li>
                 <li><a href="/about.php">About</a></li>
-                <li><a href="/login.php">Login</a></li>
-                <li><a href="/signup.php" class="btn btn-primary">Sign Up</a></li>
+                <li data-auth-item="true"><a href="/login.php">Login</a></li>
+                <li data-auth-item="true"><a href="/signup.php" class="btn btn-primary">Sign Up</a></li>
             </ul>
         </div>
     </nav>
@@ -1654,7 +1660,7 @@ security-check:
         </div>
     </div>
 
-    <script src="/assets/js/main.js"></script>
+    <script src="/assets/js/main.js?v=<?= time() ?>"></script>
 </body>
 </html>
 <!-- version hash: 86db590587abafc7e6e5e85429d703db3c8280a29dc86a360909573de77186c3 -->

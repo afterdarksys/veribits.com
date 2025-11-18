@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Settings - VeriBits</title>
-    <link rel="stylesheet" href="/assets/css/main.css">
+    <link rel="stylesheet" href="/assets/css/main.css?v=<?= time() ?>">
 </head>
 <body>
     <nav>
@@ -89,7 +89,7 @@
         </div>
     </footer>
 
-    <script src="/assets/js/main.js"></script>
-    <script src="/assets/js/settings.js"></script>
+    <script src="/assets/js/main.js?v=<?= time() ?>"></script>
+    <script src="/assets/js/settings.js?v=<?= time() ?>"></script>
 </body>
 </html>

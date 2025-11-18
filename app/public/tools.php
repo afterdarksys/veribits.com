@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Verification Tools - VeriBits</title>
-    <link rel="stylesheet" href="/assets/css/main.css">
+    <link rel="stylesheet" href="/assets/css/main.css?v=<?= time() ?>">
 </head>
 <body>
     <nav>
@@ -15,8 +15,8 @@
                 <li><a href="/cli.php">CLI</a></li>
                 <li><a href="/pricing.php">Pricing</a></li>
                 <li><a href="/about.php">About</a></li>
-                <li><a href="/login.php">Login</a></li>
-                <li><a href="/signup.php" class="btn btn-primary">Sign Up</a></li>
+                <li data-auth-item="true"><a href="/login.php">Login</a></li>
+                <li data-auth-item="true"><a href="/signup.php" class="btn btn-primary">Sign Up</a></li>
             </ul>
         </div>
     </nav>
@@ -27,6 +27,58 @@
             <p style="text-align: center; color: var(--text-secondary); margin-bottom: 3rem; font-size: 1.2rem;">
                 22+ Professional Tools for Security, DevOps & Network Engineering
             </p>
+
+            <!-- NEW FEATURES SECTION -->
+            <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 16px; padding: 2.5rem; margin-bottom: 3rem; text-align: center; box-shadow: 0 8px 32px rgba(102, 126, 234, 0.3);">
+                <h2 style="color: white; margin: 0 0 1rem 0; font-size: 2rem; display: flex; align-items: center; justify-content: center; gap: 0.5rem;">
+                    🔥 New Enterprise Features
+                </h2>
+                <p style="color: rgba(255, 255, 255, 0.95); margin-bottom: 2rem; font-size: 1.1rem;">
+                    Advanced professional tooling for enterprise security teams and Pro subscribers
+                </p>
+
+                <div class="tools-grid" style="text-align: left;">
+                    <div class="tool-card" style="background: rgba(255, 255, 255, 0.95); cursor: pointer; position: relative; overflow: hidden;" onclick="window.location='/tool/malware-detonation.php'">
+                        <div style="position: absolute; top: 10px; right: 10px; background: linear-gradient(135deg, #667eea, #764ba2); color: white; padding: 0.3rem 0.8rem; border-radius: 12px; font-size: 0.75rem; font-weight: bold; box-shadow: 0 2px 8px rgba(0,0,0,0.15);">
+                            ENTERPRISE
+                        </div>
+                        <div class="feature-icon">🦠</div>
+                        <h3>Malware Detonation Sandbox</h3>
+                        <p>Execute suspicious files in isolated VMs. Get detailed behavior analysis, IOC extraction, network traffic capture, and threat scoring powered by Cuckoo Sandbox.</p>
+                        <a href="/tool/malware-detonation.php" class="btn btn-primary" style="margin-top: 1rem;">Launch Tool →</a>
+                    </div>
+
+                    <div class="tool-card" style="background: rgba(255, 255, 255, 0.95); cursor: pointer; position: relative; overflow: hidden;" onclick="window.location='/tool/netcat.php'">
+                        <div style="position: absolute; top: 10px; right: 10px; background: linear-gradient(135deg, #f093fb, #f5576c); color: white; padding: 0.3rem 0.8rem; border-radius: 12px; font-size: 0.75rem; font-weight: bold; box-shadow: 0 2px 8px rgba(0,0,0,0.15);">
+                            PRO
+                        </div>
+                        <div class="feature-icon">🔌</div>
+                        <h3>Netcat - Network Swiss Army Knife</h3>
+                        <p>TCP/UDP connection testing, port scanning, banner grabbing, service detection, and network diagnostics. Simple and advanced modes for all skill levels.</p>
+                        <a href="/tool/netcat.php" class="btn btn-primary" style="margin-top: 1rem;">Launch Tool →</a>
+                    </div>
+
+                    <div class="tool-card" style="background: rgba(255, 255, 255, 0.95); cursor: pointer; position: relative; overflow: hidden;" onclick="window.location='/security.php'">
+                        <div style="position: absolute; top: 10px; right: 10px; background: linear-gradient(135deg, #667eea, #764ba2); color: white; padding: 0.3rem 0.8rem; border-radius: 12px; font-size: 0.75rem; font-weight: bold; box-shadow: 0 2px 8px rgba(0,0,0,0.15);">
+                            NEW
+                        </div>
+                        <div class="feature-icon">🔒</div>
+                        <h3>Enterprise Security & Compliance</h3>
+                        <p>SOC 2 Type II, ISO 27001, GDPR, HIPAA ready. Zero-knowledge encryption, 99.9% SLA, 24/7 monitoring. View our complete security documentation and certifications.</p>
+                        <a href="/security.php" class="btn btn-primary" style="margin-top: 1rem;">View Details →</a>
+                    </div>
+
+                    <div class="tool-card" style="background: rgba(255, 255, 255, 0.95); cursor: pointer; position: relative; overflow: hidden;" onclick="window.location='/cli.php'">
+                        <div style="position: absolute; top: 10px; right: 10px; background: linear-gradient(135deg, #f093fb, #f5576c); color: white; padding: 0.3rem 0.8rem; border-radius: 12px; font-size: 0.75rem; font-weight: bold; box-shadow: 0 2px 8px rgba(0,0,0,0.15);">
+                            PRO
+                        </div>
+                        <div class="feature-icon">⚡</div>
+                        <h3>Pro CLI with Automation</h3>
+                        <p>Job scheduling, local caching, offline mode, batch processing, and Zapier/n8n integration. Python, PHP, and Node.js versions available.</p>
+                        <a href="/cli.php" class="btn btn-primary" style="margin-top: 1rem;">Get Started →</a>
+                    </div>
+                </div>
+            </div>
 
             <h2 style="color: var(--primary-color); margin-bottom: 1.5rem; margin-top: 3rem;">🔐 Security & Cryptography</h2>
             <div class="tools-grid">
@@ -63,6 +115,34 @@
                     <h3>Steganography Detector</h3>
                     <p>Detect hidden data in images and files. Identify potential steganographic content.</p>
                     <a href="/tool/steganography.php" class="btn btn-primary" style="margin-top: 1rem;">Launch Tool →</a>
+                </div>
+
+                <div class="tool-card" onclick="window.location='/tool/password-recovery.php'">
+                    <div class="feature-icon">🔓</div>
+                    <h3>Password Recovery Tool</h3>
+                    <p>Remove or recover passwords from PDF, Office documents, and ZIP files. Supports dictionary attacks.</p>
+                    <a href="/tool/password-recovery.php" class="btn btn-primary" style="margin-top: 1rem;">Launch Tool →</a>
+                </div>
+
+                <div class="tool-card" onclick="window.location='/tool/hash-lookup.php'">
+                    <div class="feature-icon">🔐</div>
+                    <h3>Hash Lookup & Decryption</h3>
+                    <p>Lookup pre-computed hashes in multiple databases. MD5, SHA1, SHA256 and more. Includes batch processing.</p>
+                    <a href="/tool/hash-lookup.php" class="btn btn-primary" style="margin-top: 1rem;">Launch Tool →</a>
+                </div>
+
+                <div class="tool-card" onclick="window.location='/tool/disk-forensics.php'">
+                    <div class="feature-icon">💾</div>
+                    <h3>Disk Forensics (TSK)</h3>
+                    <p>Analyze disk images, recover deleted files, generate timelines. Powered by The Sleuth Kit.</p>
+                    <a href="/tool/disk-forensics.php" class="btn btn-primary" style="margin-top: 1rem;">Launch Tool →</a>
+                </div>
+
+                <div class="tool-card" onclick="window.location='/tool/osquery.php'">
+                    <div class="feature-icon">📊</div>
+                    <h3>osquery SQL Interface</h3>
+                    <p>Query your operating system with SQL. Monitor processes, users, network, and security events.</p>
+                    <a href="/tool/osquery.php" class="btn btn-primary" style="margin-top: 1rem;">Launch Tool →</a>
                 </div>
 
                 <div class="tool-card" onclick="window.location='/tool/pgp-validator.php'">

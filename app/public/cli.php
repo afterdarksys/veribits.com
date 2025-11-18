@@ -4,7 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>VeriBits CLI - Command Line Interface</title>
-    <link rel="stylesheet" href="/assets/css/main.css">
+    <link rel="stylesheet" href="/assets/css/main.css?v=<?= time() ?>">
+
+    <!-- DNS Science Analytics -->
+    <script src="https://www.dnsscience.io/static/js/analytics_track.js"
+            data-token="dsa_live_d51afb46c704fe2594c15ed82717cb7703c8ab5c7185e481"
+            data-endpoint="https://www.dnsscience.io/api/analytics/track"
+            async></script>
 </head>
 <body>
     <nav>
@@ -15,8 +21,8 @@
                 <li><a href="/cli.php">CLI</a></li>
                 <li><a href="/pricing.php">Pricing</a></li>
                 <li><a href="/about.php">About</a></li>
-                <li><a href="/login.php">Login</a></li>
-                <li><a href="/signup.php" class="btn btn-primary">Sign Up</a></li>
+                <li data-auth-item="true"><a href="/login.php">Login</a></li>
+                <li data-auth-item="true"><a href="/signup.php" class="btn btn-primary">Sign Up</a></li>
             </ul>
         </div>
     </nav>
@@ -76,6 +82,101 @@ python setup.py install</code></pre>
                     <li style="padding: 0.5rem 0; border-bottom: 1px solid rgba(255,255,255,0.1);">✓ Internet connection for API requests</li>
                     <li style="padding: 0.5rem 0;">✓ Works on macOS, Linux, and Windows</li>
                 </ul>
+            </div>
+
+            <!-- System Client -->
+            <div class="feature-card" style="margin-bottom: 3rem; border: 2px solid var(--primary-color);">
+                <h2 style="color: var(--primary-color); margin-bottom: 1.5rem;">🖥️ VeriBits System Client</h2>
+
+                <div style="margin-bottom: 1.5rem; padding: 1rem; background: rgba(251, 191, 36, 0.1); border-left: 3px solid var(--primary-color); border-radius: 4px;">
+                    <strong>🚀 NEW:</strong> Multi-threaded system scanner for enterprise security auditing
+                </div>
+
+                <p style="margin-bottom: 1.5rem; font-size: 1.1rem;">
+                    The VeriBits System Client is a high-performance, multi-threaded file integrity monitoring tool designed for enterprise environments.
+                    It scans your entire system, generates cryptographic hashes (SHA-256 and SHA-512) for all files, and uploads the results
+                    to your VeriBits account for centralized security monitoring and baseline comparison.
+                </p>
+
+                <h3 style="margin-bottom: 0.75rem;">📥 Download</h3>
+                <div style="margin-bottom: 1.5rem;">
+                    <a href="/downloads/veribits-system-client-1.0.tar.gz"
+                       class="btn btn-primary"
+                       style="display: inline-block; padding: 1rem 2rem; font-size: 1.1rem; text-decoration: none;">
+                        Download System Client v1.0
+                    </a>
+                    <span style="margin-left: 1rem; color: var(--text-secondary);">9.3 KB</span>
+                </div>
+
+                <h3 style="margin-bottom: 0.75rem;">✨ Key Features</h3>
+                <ul style="list-style: none; padding: 0; margin-bottom: 1.5rem;">
+                    <li style="padding: 0.5rem 0; border-bottom: 1px solid rgba(255,255,255,0.1);">⚡ Multi-threaded scanning for maximum performance</li>
+                    <li style="padding: 0.5rem 0; border-bottom: 1px solid rgba(255,255,255,0.1);">🔐 SHA-256 and SHA-512 cryptographic hashing</li>
+                    <li style="padding: 0.5rem 0; border-bottom: 1px solid rgba(255,255,255,0.1);">☁️ Automatic upload to VeriBits cloud platform</li>
+                    <li style="padding: 0.5rem 0; border-bottom: 1px solid rgba(255,255,255,0.1);">📊 View results in centralized System Scans dashboard</li>
+                    <li style="padding: 0.5rem 0; border-bottom: 1px solid rgba(255,255,255,0.1);">🎯 Configurable scan paths and exclusions</li>
+                    <li style="padding: 0.5rem 0; border-bottom: 1px solid rgba(255,255,255,0.1);">🔄 Batch processing with progress tracking</li>
+                    <li style="padding: 0.5rem 0;">🚀 Production-ready for Linux, macOS, and Windows</li>
+                </ul>
+
+                <h3 style="margin-bottom: 0.75rem;">⚙️ Installation & Configuration</h3>
+                <pre style="background: var(--darker-bg); padding: 1.5rem; border-radius: 8px; overflow-x: auto; margin-bottom: 1.5rem;"><code># Download and extract
+wget https://veribits.com/downloads/veribits-system-client-1.0.tar.gz
+tar -xzf veribits-system-client-1.0.tar.gz
+cd veribits-system-client-1.0
+
+# Install Python dependencies
+pip install -r requirements.txt
+
+# Configure with your API credentials
+cp config.json.example config.json
+nano config.json  # Edit with your email and API key
+
+# Run a scan
+python3 scan_system.py</code></pre>
+
+                <h3 style="margin-bottom: 0.75rem;">📝 Configuration File (config.json)</h3>
+                <pre style="background: var(--darker-bg); padding: 1.5rem; border-radius: 8px; overflow-x: auto; margin-bottom: 1.5rem;"><code>{
+  "endpoint_url": "https://veribits.com/api/v1/system-scans",
+  "email": "your-email@example.com",
+  "api_key": "vb_your_api_key_here_48_characters_long_hex"
+}</code></pre>
+
+                <div style="margin-top: 1rem; padding: 1rem; background: rgba(251, 191, 36, 0.1); border-left: 3px solid var(--accent-color); border-radius: 4px;">
+                    <strong>🔑 Get Your API Key:</strong> Log in to your <a href="/dashboard.php" style="color: var(--primary-color);">dashboard</a> to find your API key under the API Keys section.
+                </div>
+
+                <h3 style="margin-bottom: 0.75rem; margin-top: 1.5rem;">💼 Use Cases</h3>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.5rem;">
+                    <div style="padding: 1rem; background: rgba(255,255,255,0.05); border-radius: 8px;">
+                        <strong style="color: var(--primary-color);">🏢 Enterprise Security</strong>
+                        <p style="margin-top: 0.5rem; font-size: 0.9rem;">Establish file integrity baselines across your infrastructure</p>
+                    </div>
+                    <div style="padding: 1rem; background: rgba(255,255,255,0.05); border-radius: 8px;">
+                        <strong style="color: var(--primary-color);">🔍 Compliance Auditing</strong>
+                        <p style="margin-top: 0.5rem; font-size: 0.9rem;">Meet regulatory requirements for file integrity monitoring</p>
+                    </div>
+                    <div style="padding: 1rem; background: rgba(255,255,255,0.05); border-radius: 8px;">
+                        <strong style="color: var(--primary-color);">🛡️ Threat Detection</strong>
+                        <p style="margin-top: 0.5rem; font-size: 0.9rem;">Compare against known malware signatures and detect anomalies</p>
+                    </div>
+                    <div style="padding: 1rem; background: rgba(255,255,255,0.05); border-radius: 8px;">
+                        <strong style="color: var(--primary-color);">📊 Change Tracking</strong>
+                        <p style="margin-top: 0.5rem; font-size: 0.9rem;">Monitor system changes and unauthorized file modifications</p>
+                    </div>
+                </div>
+
+                <h3 style="margin-bottom: 0.75rem;">🎯 System Requirements</h3>
+                <ul style="list-style: none; padding: 0;">
+                    <li style="padding: 0.5rem 0; border-bottom: 1px solid rgba(255,255,255,0.1);">✓ Python 3.7 or higher</li>
+                    <li style="padding: 0.5rem 0; border-bottom: 1px solid rgba(255,255,255,0.1);">✓ Internet connection for API uploads</li>
+                    <li style="padding: 0.5rem 0; border-bottom: 1px solid rgba(255,255,255,0.1);">✓ Read permissions for files you want to scan</li>
+                    <li style="padding: 0.5rem 0;">✓ Active VeriBits account with valid API key</li>
+                </ul>
+
+                <div style="margin-top: 1.5rem; padding: 1rem; background: rgba(59, 130, 246, 0.1); border-left: 3px solid #3b82f6; border-radius: 4px;">
+                    <strong>📖 View Your Scans:</strong> After running the system client, view your scan results in the <a href="/scans.php" style="color: var(--primary-color);">System Scans Dashboard</a>.
+                </div>
             </div>
 
             <!-- Features -->
@@ -523,6 +624,6 @@ COPY ./src /app/src
         </div>
     </footer>
 
-    <script src="/assets/js/main.js"></script>
+    <script src="/assets/js/main.js?v=<?= time() ?>"></script>
 </body>
 </html>
