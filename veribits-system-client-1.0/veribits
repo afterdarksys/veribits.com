@@ -1,0 +1,814 @@
+#!/usr/bin/env python3
+"""
+VeriBits CLI - Professional Security & Forensics Toolkit
+Unified command-line interface for all VeriBits tools
+"""
+
+import sys
+import os
+import json
+import argparse
+import requests
+from pathlib import Path
+from typing import Dict, Optional
+import subprocess
+
+VERSION = "1.0.0"
+DEFAULT_CONFIG = os.path.expanduser("~/.veribits/config.json")
+DEFAULT_API_URL = "https://veribits.com"
+
+
+class VeriBitsCLI:
+    def __init__(self):
+        self.config = self.load_config()
+        self.api_url = self.config.get('api_url', DEFAULT_API_URL)
+        self.api_key = self.config.get('api_key', '')
+
+    def load_config(self) -> Dict:
+        """Load configuration from file"""
+        if os.path.exists(DEFAULT_CONFIG):
+            try:
+                with open(DEFAULT_CONFIG, 'r') as f:
+                    return json.load(f)
+            except Exception as e:
+                print(f"Warning: Failed to load config: {e}", file=sys.stderr)
+        return {}
+
+    def save_config(self, config: Dict):
+        """Save configuration to file"""
+        config_dir = os.path.dirname(DEFAULT_CONFIG)
+        os.makedirs(config_dir, exist_ok=True)
+        with open(DEFAULT_CONFIG, 'w') as f:
+            json.dump(config, f, indent=2)
+
+    def api_request(self, endpoint: str, method: str = 'GET', data: Dict = None, files: Dict = None) -> Dict:
+        """Make API request to VeriBits"""
+        url = f"{self.api_url}/api/v1{endpoint}"
+        headers = {}
+
+        if self.api_key:
+            headers['Authorization'] = f'Bearer {self.api_key}'
+
+        try:
+            if method == 'GET':
+                response = requests.get(url, headers=headers)
+            elif method == 'POST':
+                if files:
+                    response = requests.post(url, headers=headers, data=data, files=files)
+                else:
+                    headers['Content-Type'] = 'application/json'
+                    response = requests.post(url, headers=headers, json=data)
+
+            response.raise_for_status()
+            return response.json()
+        except requests.exceptions.RequestException as e:
+            print(f"API Error: {e}", file=sys.stderr)
+            sys.exit(1)
+
+    # ========== HASH COMMANDS ==========
+
+    def hash_lookup(self, args):
+        """Lookup a hash in multiple databases"""
+        print(f"🔍 Looking up hash: {args.hash}")
+
+        result = self.api_request('/tools/hash-lookup', 'POST', {
+            'hash': args.hash,
+            'hash_type': args.type or 'auto'
+        })
+
+        if result['success']:
+            data = result['data']
+            if data['found']:
+                print(f"\n✓ Hash Found!")
+                print(f"Hash Type: {data['hash_type'].upper()}")
+                print(f"Plaintext: {data['plaintext']}")
+                print(f"\nSources checked: {data['sources_queried']}")
+                print(f"Sources found: {data['sources_found']}")
+
+                if args.verbose:
+                    print("\nSource Details:")
+                    for source in data['sources']:
+                        status = "✓" if source['found'] else "✗"
+                        print(f"  {status} {source['source']}")
+            else:
+                print(f"\n✗ Hash not found in any database")
+                print(f"Checked {data['sources_queried']} sources")
+        else:
+            print(f"Error: {result.get('error', {}).get('message', 'Unknown error')}")
+
+    def hash_batch(self, args):
+        """Batch lookup multiple hashes"""
+        print(f"📋 Loading hashes from: {args.file}")
+
+        with open(args.file, 'r') as f:
+            hashes = [line.strip() for line in f if line.strip()]
+
+        print(f"Found {len(hashes)} hashes to lookup\n")
+
+        result = self.api_request('/tools/hash-lookup/batch', 'POST', {
+            'hashes': hashes
+        })
+
+        if result['success']:
+            data = result['data']
+            print(f"Total: {data['total']}")
+            print(f"Found: {data['found']}")
+            print(f"Not Found: {data['not_found']}\n")
+
+            for r in data['results']:
+                status = "✓" if r['found'] else "✗"
+                plaintext = r['plaintext'] if r['found'] else 'Not found'
+                print(f"{status} {r['hash'][:16]}... → {plaintext}")
+
+            if args.output:
+                self.save_results(args.output, data['results'])
+                print(f"\n💾 Results saved to: {args.output}")
+
+    def hash_identify(self, args):
+        """Identify hash type"""
+        print(f"🔎 Identifying hash: {args.hash}")
+
+        result = self.api_request('/tools/hash-lookup/identify', 'POST', {
+            'hash': args.hash
+        })
+
+        if result['success']:
+            data = result['data']
+            print(f"\nLength: {data['length']} characters")
+            print(f"Most Likely: {data['most_likely'].upper()}")
+            print(f"\nPossible Types:")
+            for htype in data['possible_types']:
+                print(f"  • {htype}")
+
+    # ========== PASSWORD COMMANDS ==========
+
+    def password_analyze(self, args):
+        """Analyze password-protected file"""
+        print(f"📊 Analyzing file: {args.file}")
+
+        with open(args.file, 'rb') as f:
+            files = {'file': f}
+            result = self.api_request('/tools/password-recovery/analyze', 'POST', files=files)
+
+        if result['success']:
+            data = result['data']
+            print(f"\nFilename: {data['filename']}")
+            print(f"Type: {data['type'].upper()}")
+            print(f"Size: {self.format_size(data['size'])}")
+
+            if data['is_encrypted']:
+                print(f"Status: 🔒 Encrypted")
+                if data.get('encryption_type'):
+                    print(f"Encryption: {data['encryption_type']}")
+            else:
+                print(f"Status: 🔓 Not Encrypted")
+
+    def password_remove(self, args):
+        """Remove password from file"""
+        print(f"🔓 Removing password from: {args.file}")
+
+        with open(args.file, 'rb') as f:
+            files = {'file': f}
+            data = {'password': args.password}
+
+            # Direct file download
+            url = f"{self.api_url}/api/v1/tools/password-recovery/remove"
+            headers = {'Authorization': f'Bearer {self.api_key}'} if self.api_key else {}
+
+            response = requests.post(url, headers=headers, files=files, data=data)
+
+            if response.status_code == 200:
+                output_file = args.output or f"unlocked_{os.path.basename(args.file)}"
+                with open(output_file, 'wb') as out:
+                    out.write(response.content)
+                print(f"✓ Password removed successfully!")
+                print(f"💾 Saved to: {output_file}")
+            else:
+                error = response.json()
+                print(f"Error: {error.get('error', {}).get('message', 'Failed to remove password')}")
+
+    def password_crack(self, args):
+        """Crack password using dictionary attack"""
+        print(f"🔨 Attempting to crack password: {args.file}")
+        print(f"Wordlist: {args.wordlist}")
+        print(f"Max attempts: {args.max_attempts}\n")
+
+        with open(args.file, 'rb') as f:
+            files = {'file': f}
+            data = {
+                'wordlist': args.wordlist,
+                'max_attempts': args.max_attempts,
+                'method': 'dictionary'
+            }
+
+            # This may take a while
+            print("This may take several minutes...\n")
+
+            result = self.api_request('/tools/password-recovery/crack', 'POST', data=data, files=files)
+
+        if result['success']:
+            data = result['data']
+            if data['found']:
+                print(f"✓ Password Found!")
+                print(f"Password: {data['password']}")
+                print(f"Attempts: {data['attempts']}")
+                print(f"Time: {data['time_seconds']}s")
+            else:
+                print(f"✗ Password not found")
+                print(f"Attempts: {data['attempts']}")
+                print(f"Time: {data['time_seconds']}s")
+                print(f"\nTry a different wordlist or increase max attempts")
+
+    # ========== DISK FORENSICS COMMANDS ==========
+
+    def disk_analyze(self, args):
+        """Analyze disk image"""
+        print(f"💾 Analyzing disk image: {args.image}")
+
+        # Upload image first
+        print("Uploading image (this may take a while)...")
+        with open(args.image, 'rb') as f:
+            files = {'file': f}
+            upload_result = self.api_request('/forensics/disk/upload', 'POST', files=files)
+
+        if not upload_result['success']:
+            print("Upload failed!")
+            return
+
+        analysis_id = upload_result['data']['analysis_id']
+        print(f"Upload complete! Analysis ID: {analysis_id}\n")
+
+        # Run analysis
+        operations = args.operations.split(',') if args.operations else ['list_files', 'fsstat']
+
+        print(f"Running analysis operations: {', '.join(operations)}")
+        result = self.api_request('/forensics/disk/analyze', 'POST', {
+            'analysis_id': analysis_id,
+            'operations': operations
+        })
+
+        if result['success']:
+            data = result['data']['results']
+
+            if 'files' in data:
+                print(f"\n📁 Files found: {data['files']['total']}")
+
+            if 'filesystem' in data:
+                print(f"\n📊 File System Information:")
+                for key, value in data['filesystem'].items():
+                    print(f"  {key}: {value}")
+
+            if 'partitions' in data:
+                print(f"\n💽 Partitions: {data['partitions']['count']}")
+
+            if args.output:
+                self.save_results(args.output, data)
+                print(f"\n💾 Full results saved to: {args.output}")
+
+    def disk_recover(self, args):
+        """Recover deleted files from disk image"""
+        print(f"♻️  Recovering deleted files from: {args.image}")
+        print("This operation may take several minutes...\n")
+
+        # Implementation would call TSK locally or via API
+        # For now, showing the concept
+        print("To recover files from large images, use the web interface:")
+        print(f"{self.api_url}/tool/disk-forensics.php")
+
+    def disk_timeline(self, args):
+        """Generate forensic timeline from disk image"""
+        print(f"⏱️  Generating timeline from: {args.image}")
+        # Implementation would use TSK locally
+        print("Feature available via web interface:")
+        print(f"{self.api_url}/tool/disk-forensics.php")
+
+    # ========== OSQUERY COMMANDS ==========
+
+    def osquery_run(self, args):
+        """Execute osquery SQL query"""
+        print(f"📊 Executing query: {args.query[:50]}...\n")
+
+        result = self.api_request('/osquery/execute', 'POST', {
+            'query': args.query,
+            'timeout': args.timeout
+        })
+
+        if result['success']:
+            data = result['data']
+            print(f"Rows: {data['row_count']}")
+            print(f"Time: {data['execution_time']}s\n")
+
+            if data['row_count'] > 0:
+                # Print table
+                columns = data['columns']
+                rows = data['rows']
+
+                # Print header
+                print(" | ".join(columns))
+                print("-" * (len(columns) * 20))
+
+                # Print rows (limit to 20)
+                for row in rows[:20]:
+                    print(" | ".join(str(row.get(col, '')) for col in columns))
+
+                if len(rows) > 20:
+                    print(f"\n... and {len(rows) - 20} more rows")
+
+            if args.output:
+                self.save_results(args.output, data['rows'])
+                print(f"\n💾 Results saved to: {args.output}")
+
+    def osquery_pack(self, args):
+        """Run osquery pack"""
+        print(f"📦 Running query pack: {args.pack}")
+
+        result = self.api_request('/osquery/pack', 'POST', {
+            'pack': args.pack
+        })
+
+        if result['success']:
+            data = result['data']
+            print(f"✓ Pack executed: {data['queries_run']} queries")
+
+    def osquery_tables(self, args):
+        """List available osquery tables"""
+        result = self.api_request('/osquery/tables', 'GET')
+
+        if result['success']:
+            tables = result['data']['tables']
+            print(f"Available osquery tables ({len(tables)}):\n")
+            for table in tables:
+                print(f"  • {table['name']}")
+                if args.verbose:
+                    print(f"    {table.get('description', '')}")
+
+    # ========== MALWARE DETONATION COMMANDS ==========
+
+    def malware_submit(self, args):
+        """Submit file for malware analysis"""
+        import time
+        print(f"🦠 Submitting file for analysis: {args.file}")
+
+        with open(args.file, 'rb') as f:
+            files = {'file': (os.path.basename(args.file), f)}
+            data = {
+                'priority': args.priority or 1,
+                'timeout': args.timeout or 120,
+                'enable_network': '1' if args.enable_network else '0'
+            }
+
+            result = self.api_request('/malware/submit', 'POST', data, files)
+
+        if result['success']:
+            submission_id = result['data']['submission_id']
+            print(f"\n✓ Submission successful!")
+            print(f"Submission ID: {submission_id}")
+            print(f"Cuckoo Task ID: {result['data']['cuckoo_task_id']}")
+            print(f"Status: {result['data']['status']}")
+
+            if args.wait:
+                print(f"\n⏳ Waiting for analysis to complete...")
+                while True:
+                    time.sleep(5)
+                    status_result = self.api_request(f'/malware/status/{submission_id}')
+
+                    if status_result['success']:
+                        status = status_result['data']['status']
+                        print(f"Status: {status}")
+
+                        if status == 'reported':
+                            print(f"\n✓ Analysis complete!")
+                            # Auto-fetch report
+                            self.malware_report_simple(submission_id)
+                            break
+                        elif status == 'failed':
+                            print(f"\n✗ Analysis failed")
+                            break
+        else:
+            print(f"Error: {result.get('error', {}).get('message', 'Unknown error')}")
+
+    def malware_status(self, args):
+        """Check malware analysis status"""
+        print(f"🔍 Checking status for submission: {args.id}")
+
+        result = self.api_request(f'/malware/status/{args.id}')
+
+        if result['success']:
+            data = result['data']
+            print(f"\nSubmission ID: {args.id}")
+            print(f"File: {data['file_name']}")
+            print(f"Status: {data['status']}")
+            print(f"Submitted: {data['submitted_at']}")
+            if data.get('completed_at'):
+                print(f"Completed: {data['completed_at']}")
+        else:
+            print(f"Error: {result.get('error', {}).get('message', 'Unknown error')}")
+
+    def malware_report_simple(self, submission_id):
+        """Fetch and display report (internal use)"""
+        result = self.api_request(f'/malware/report/{submission_id}')
+
+        if result['success']:
+            data = result['data']
+            report = data['report']
+
+            print(f"\n{'='*60}")
+            print(f"MALWARE ANALYSIS REPORT")
+            print(f"{'='*60}")
+            print(f"File: {data['file_name']}")
+            print(f"SHA-256: {data['file_hash']}")
+            print(f"Score: {report.get('score', 'N/A')}/10")
+            print(f"Threats Detected: {report.get('threats_detected', 0)}")
+
+            if report.get('signatures'):
+                print(f"\n📋 Signatures Matched:")
+                for sig in report['signatures'][:10]:
+                    print(f"  • {sig}")
+
+            if report.get('network_activity', {}).get('connections'):
+                print(f"\n🌐 Network Connections: {len(report['network_activity']['connections'])}")
+
+            if report.get('iocs'):
+                iocs = report['iocs']
+                if iocs.get('ips'):
+                    print(f"\n🚨 IOCs - IP Addresses:")
+                    for ip in iocs['ips'][:5]:
+                        print(f"  • {ip}")
+
+    def malware_report(self, args):
+        """Get malware analysis report"""
+        print(f"📊 Fetching report for submission: {args.id}")
+
+        result = self.api_request(f'/malware/report/{args.id}')
+
+        if result['success']:
+            data = result['data']
+
+            if args.format == 'json':
+                print(json.dumps(data, indent=2))
+            elif args.output:
+                with open(args.output, 'w') as f:
+                    json.dump(data, f, indent=2)
+                print(f"✓ Report saved to: {args.output}")
+            else:
+                self.malware_report_simple(args.id)
+        else:
+            print(f"Error: {result.get('error', {}).get('message', 'Unknown error')}")
+
+    def malware_iocs(self, args):
+        """Extract IOCs from analysis"""
+        print(f"🚨 Extracting IOCs for submission: {args.id}")
+
+        result = self.api_request(f'/malware/iocs/{args.id}')
+
+        if result['success']:
+            iocs = result['data']['iocs']
+
+            if iocs.get('ips'):
+                print(f"\n🌐 IP Addresses ({len(iocs['ips'])}):")
+                for ip in iocs['ips']:
+                    print(f"  • {ip}")
+
+            if iocs.get('domains'):
+                print(f"\n🌍 Domains ({len(iocs['domains'])}):")
+                for domain in iocs['domains']:
+                    print(f"  • {domain}")
+
+            if iocs.get('urls'):
+                print(f"\n🔗 URLs ({len(iocs['urls'])}):")
+                for url in iocs['urls'][:10]:
+                    print(f"  • {url}")
+
+            if iocs.get('hashes'):
+                print(f"\n🔐 File Hashes ({len(iocs['hashes'])}):")
+                for hash_val in iocs['hashes']:
+                    print(f"  • {hash_val}")
+
+            if iocs.get('registry_keys'):
+                print(f"\n🗝️  Registry Keys ({len(iocs['registry_keys'])}):")
+                for key in iocs['registry_keys'][:10]:
+                    print(f"  • {key}")
+
+            if args.output:
+                with open(args.output, 'w') as f:
+                    json.dump(iocs, f, indent=2)
+                print(f"\n💾 IOCs saved to: {args.output}")
+        else:
+            print(f"Error: {result.get('error', {}).get('message', 'Unknown error')}")
+
+    # ========== NETCAT COMMANDS ==========
+
+    def netcat(self, args):
+        """Execute netcat connection"""
+        host = args.host
+        port = args.port
+        protocol = args.protocol or 'tcp'
+        data = args.data or None
+        timeout = args.timeout or 5
+        wait_time = args.wait_time or 2
+        verbose = args.verbose or False
+        zero_io = args.zero_io or False
+        source_port = args.source_port or None
+
+        print(f"🔌 Connecting to {host}:{port}...")
+
+        result = self.api_request('/tools/netcat', 'POST', {
+            'host': host,
+            'port': port,
+            'protocol': protocol,
+            'data': data,
+            'timeout': timeout,
+            'wait_time': wait_time,
+            'verbose': verbose,
+            'zero_io': zero_io,
+            'source_port': source_port
+        })
+
+        if result['success']:
+            data = result['data']
+
+            print(f"\nStatus: {'✓ Connected' if data['connected'] else '✗ Connection Failed'}")
+            print(f"Host: {data['host']}")
+            print(f"Port: {data['port']}")
+            print(f"Protocol: {data['protocol'].upper()}")
+
+            if data.get('connection_time'):
+                print(f"Connection Time: {data['connection_time']}ms")
+
+            if data.get('response'):
+                print(f"\nResponse:")
+                print(data['response'])
+                print(f"\nReceived {data['bytes_received']} bytes")
+
+            if data.get('banner'):
+                print(f"\nBanner: {data['banner']}")
+
+            if data.get('service_name'):
+                print(f"\nDetected Service: {data['service_name']}")
+                if data.get('service_description'):
+                    print(f"Description: {data['service_description']}")
+
+            if data.get('error'):
+                print(f"\nError: {data['error']}")
+
+            if data.get('verbose_output') and verbose:
+                print(f"\nVerbose Output:")
+                print(data['verbose_output'])
+
+    # ========== SYSTEM SCAN COMMANDS ==========
+
+    def scan_system(self, args):
+        """Run system file hash scan"""
+        # Use existing file_hasher.py
+        print("🔍 Running system scan...")
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        hasher_path = os.path.join(script_dir, 'file_hasher.py')
+
+        if os.path.exists(hasher_path):
+            subprocess.run([sys.executable, hasher_path])
+        else:
+            print("Error: file_hasher.py not found")
+
+    # ========== CONFIG COMMANDS ==========
+
+    def config_set(self, args):
+        """Set configuration value"""
+        config = self.load_config()
+        config[args.key] = args.value
+        self.save_config(config)
+        print(f"✓ Set {args.key} = {args.value}")
+
+    def config_show(self, args):
+        """Show current configuration"""
+        config = self.load_config()
+        print("Current configuration:")
+        for key, value in config.items():
+            # Hide sensitive values
+            if 'key' in key.lower() or 'password' in key.lower():
+                value = '***' + value[-4:] if len(value) > 4 else '****'
+            print(f"  {key}: {value}")
+
+    # ========== HELPER METHODS ==========
+
+    def format_size(self, size: int) -> str:
+        """Format file size"""
+        for unit in ['B', 'KB', 'MB', 'GB']:
+            if size < 1024:
+                return f"{size:.2f} {unit}"
+            size /= 1024
+        return f"{size:.2f} TB"
+
+    def save_results(self, filename: str, data):
+        """Save results to file"""
+        with open(filename, 'w') as f:
+            json.dump(data, f, indent=2)
+
+
+def main():
+    parser = argparse.ArgumentParser(
+        description='VeriBits CLI - Professional Security & Forensics Toolkit',
+        formatter_class=argparse.RawDescriptionHelpFormatter
+    )
+    parser.add_argument('--version', action='version', version=f'VeriBits CLI v{VERSION}')
+
+    subparsers = parser.add_subparsers(dest='command', help='Commands')
+
+    # ========== HASH COMMANDS ==========
+    hash_parser = subparsers.add_parser('hash', help='Hash lookup and analysis')
+    hash_sub = hash_parser.add_subparsers(dest='hash_command')
+
+    # hash lookup
+    lookup_parser = hash_sub.add_parser('lookup', help='Lookup hash in databases')
+    lookup_parser.add_argument('hash', help='Hash to lookup')
+    lookup_parser.add_argument('-t', '--type', help='Hash type (auto, md5, sha1, sha256)')
+    lookup_parser.add_argument('-v', '--verbose', action='store_true', help='Show detailed source information')
+
+    # hash batch
+    batch_parser = hash_sub.add_parser('batch', help='Batch lookup multiple hashes')
+    batch_parser.add_argument('file', help='File containing hashes (one per line)')
+    batch_parser.add_argument('-o', '--output', help='Output file for results (JSON)')
+
+    # hash identify
+    identify_parser = hash_sub.add_parser('identify', help='Identify hash type')
+    identify_parser.add_argument('hash', help='Hash to identify')
+
+    # ========== PASSWORD COMMANDS ==========
+    pass_parser = subparsers.add_parser('password', help='Password recovery and cracking')
+    pass_sub = pass_parser.add_subparsers(dest='password_command')
+
+    # password analyze
+    analyze_parser = pass_sub.add_parser('analyze', help='Analyze password-protected file')
+    analyze_parser.add_argument('file', help='File to analyze')
+
+    # password remove
+    remove_parser = pass_sub.add_parser('remove', help='Remove password from file')
+    remove_parser.add_argument('file', help='File to unlock')
+    remove_parser.add_argument('-p', '--password', required=True, help='Password')
+    remove_parser.add_argument('-o', '--output', help='Output file')
+
+    # password crack
+    crack_parser = pass_sub.add_parser('crack', help='Crack password')
+    crack_parser.add_argument('file', help='File to crack')
+    crack_parser.add_argument('-w', '--wordlist', default='common', help='Wordlist (common, numeric, alpha)')
+    crack_parser.add_argument('-m', '--max-attempts', type=int, default=1000, help='Max attempts')
+
+    # ========== DISK COMMANDS ==========
+    disk_parser = subparsers.add_parser('disk', help='Disk forensics (TSK)')
+    disk_sub = disk_parser.add_subparsers(dest='disk_command')
+
+    # disk analyze
+    analyze_disk_parser = disk_sub.add_parser('analyze', help='Analyze disk image')
+    analyze_disk_parser.add_argument('image', help='Disk image file')
+    analyze_disk_parser.add_argument('-ops', '--operations', help='Operations (comma-separated): list_files,recover_deleted,timeline,fsstat,partitions')
+    analyze_disk_parser.add_argument('-o', '--output', help='Output file for results (JSON)')
+
+    # disk recover
+    recover_parser = disk_sub.add_parser('recover', help='Recover deleted files')
+    recover_parser.add_argument('image', help='Disk image file')
+    recover_parser.add_argument('-o', '--output', help='Output directory')
+
+    # disk timeline
+    timeline_parser = disk_sub.add_parser('timeline', help='Generate forensic timeline')
+    timeline_parser.add_argument('image', help='Disk image file')
+    timeline_parser.add_argument('-o', '--output', help='Output file (CSV)')
+
+    # ========== OSQUERY COMMANDS ==========
+    osq_parser = subparsers.add_parser('osquery', help='osquery SQL interface')
+    osq_sub = osq_parser.add_subparsers(dest='osquery_command')
+
+    # osquery run
+    run_parser = osq_sub.add_parser('run', help='Execute SQL query')
+    run_parser.add_argument('query', help='SQL query')
+    run_parser.add_argument('-t', '--timeout', type=int, default=30, help='Query timeout (seconds)')
+    run_parser.add_argument('-o', '--output', help='Output file (JSON)')
+
+    # osquery pack
+    pack_parser = osq_sub.add_parser('pack', help='Run query pack')
+    pack_parser.add_argument('pack', help='Pack name (security-audit, inventory)')
+
+    # osquery tables
+    tables_parser = osq_sub.add_parser('tables', help='List available tables')
+    tables_parser.add_argument('-v', '--verbose', action='store_true', help='Show descriptions')
+
+    # ========== MALWARE DETONATION COMMANDS ==========
+    malware_parser = subparsers.add_parser('malware', help='Malware detonation sandbox')
+    malware_sub = malware_parser.add_subparsers(dest='malware_command')
+
+    # malware submit
+    submit_parser = malware_sub.add_parser('submit', help='Submit file for analysis')
+    submit_parser.add_argument('file', help='File to analyze')
+    submit_parser.add_argument('-p', '--priority', type=int, choices=[1,2,3], default=1, help='Priority (1=low, 2=medium, 3=high)')
+    submit_parser.add_argument('-t', '--timeout', type=int, default=120, help='Analysis timeout (seconds)')
+    submit_parser.add_argument('-n', '--enable-network', action='store_true', help='Enable network during analysis')
+    submit_parser.add_argument('-w', '--wait', action='store_true', help='Wait for analysis to complete')
+
+    # malware status
+    status_parser = malware_sub.add_parser('status', help='Check analysis status')
+    status_parser.add_argument('id', help='Submission ID')
+
+    # malware report
+    report_parser = malware_sub.add_parser('report', help='Get analysis report')
+    report_parser.add_argument('id', help='Submission ID')
+    report_parser.add_argument('-f', '--format', choices=['text', 'json'], default='text', help='Output format')
+    report_parser.add_argument('-o', '--output', help='Output file')
+
+    # malware iocs
+    iocs_parser = malware_sub.add_parser('iocs', help='Extract IOCs from analysis')
+    iocs_parser.add_argument('id', help='Submission ID')
+    iocs_parser.add_argument('-o', '--output', help='Output file (JSON)')
+
+    # ========== NETCAT COMMANDS ==========
+    nc_parser = subparsers.add_parser('netcat', help='Network connection utility')
+    nc_parser.add_argument('host', help='Target host')
+    nc_parser.add_argument('port', type=int, help='Target port')
+    nc_parser.add_argument('--protocol', choices=['tcp', 'udp'], default='tcp', help='Protocol (default: tcp)')
+    nc_parser.add_argument('--data', help='Data to send')
+    nc_parser.add_argument('--timeout', type=int, default=5, help='Connection timeout (default: 5)')
+    nc_parser.add_argument('--wait-time', type=int, default=2, help='Wait time for response (default: 2)')
+    nc_parser.add_argument('-v', '--verbose', action='store_true', help='Verbose output')
+    nc_parser.add_argument('--zero-io', action='store_true', help='Zero I/O mode (scan only)')
+    nc_parser.add_argument('--source-port', type=int, help='Source port')
+
+    # ========== SYSTEM COMMANDS ==========
+    scan_parser = subparsers.add_parser('scan', help='Run system file scan')
+
+    # ========== CONFIG COMMANDS ==========
+    config_parser = subparsers.add_parser('config', help='Configure CLI')
+    config_sub = config_parser.add_subparsers(dest='config_command')
+
+    # config set
+    set_parser = config_sub.add_parser('set', help='Set configuration value')
+    set_parser.add_argument('key', help='Configuration key')
+    set_parser.add_argument('value', help='Configuration value')
+
+    # config show
+    show_parser = config_sub.add_parser('show', help='Show configuration')
+
+    # Parse arguments
+    args = parser.parse_args()
+
+    if not args.command:
+        parser.print_help()
+        sys.exit(1)
+
+    # Initialize CLI
+    cli = VeriBitsCLI()
+
+    # Route to appropriate handler
+    try:
+        if args.command == 'hash':
+            if args.hash_command == 'lookup':
+                cli.hash_lookup(args)
+            elif args.hash_command == 'batch':
+                cli.hash_batch(args)
+            elif args.hash_command == 'identify':
+                cli.hash_identify(args)
+        elif args.command == 'password':
+            if args.password_command == 'analyze':
+                cli.password_analyze(args)
+            elif args.password_command == 'remove':
+                cli.password_remove(args)
+            elif args.password_command == 'crack':
+                cli.password_crack(args)
+        elif args.command == 'disk':
+            if args.disk_command == 'analyze':
+                cli.disk_analyze(args)
+            elif args.disk_command == 'recover':
+                cli.disk_recover(args)
+            elif args.disk_command == 'timeline':
+                cli.disk_timeline(args)
+        elif args.command == 'osquery':
+            if args.osquery_command == 'run':
+                cli.osquery_run(args)
+            elif args.osquery_command == 'pack':
+                cli.osquery_pack(args)
+            elif args.osquery_command == 'tables':
+                cli.osquery_tables(args)
+        elif args.command == 'malware':
+            if args.malware_command == 'submit':
+                cli.malware_submit(args)
+            elif args.malware_command == 'status':
+                cli.malware_status(args)
+            elif args.malware_command == 'report':
+                cli.malware_report(args)
+            elif args.malware_command == 'iocs':
+                cli.malware_iocs(args)
+        elif args.command == 'netcat':
+            cli.netcat(args)
+        elif args.command == 'scan':
+            cli.scan_system(args)
+        elif args.command == 'config':
+            if args.config_command == 'set':
+                cli.config_set(args)
+            elif args.config_command == 'show':
+                cli.config_show(args)
+    except KeyboardInterrupt:
+        print("\n\nOperation cancelled by user")
+        sys.exit(1)
+    except Exception as e:
+        print(f"\nError: {e}", file=sys.stderr)
+        sys.exit(1)
+
+
+if __name__ == '__main__':
+    main()

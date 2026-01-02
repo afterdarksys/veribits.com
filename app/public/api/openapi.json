@@ -1,0 +1,821 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "VeriBits API",
+    "description": "File verification, security tools, and cryptographic validation platform API",
+    "version": "1.0.0",
+    "contact": {
+      "name": "VeriBits Support",
+      "email": "support@veribits.com",
+      "url": "https://veribits.com"
+    },
+    "license": {
+      "name": "Proprietary",
+      "url": "https://veribits.com/terms"
+    }
+  },
+  "servers": [
+    {
+      "url": "https://veribits.com/api/v1",
+      "description": "Production API"
+    },
+    {
+      "url": "https://api.veribits.com/api/v1",
+      "description": "Production API (alternate)"
+    }
+  ],
+  "tags": [
+    {"name": "Authentication", "description": "User authentication and session management"},
+    {"name": "Central Auth", "description": "After Dark Systems Central SSO integration"},
+    {"name": "Verification", "description": "File and data verification tools"},
+    {"name": "DNS Tools", "description": "DNS validation and lookup tools"},
+    {"name": "SSL/TLS Tools", "description": "Certificate and SSL chain tools"},
+    {"name": "Network Tools", "description": "Network diagnostics and security"},
+    {"name": "Developer Tools", "description": "Regex, hash, encoding utilities"},
+    {"name": "Security Scanning", "description": "IAM, secrets, and security analysis"},
+    {"name": "Billing", "description": "Subscription and payment management"},
+    {"name": "Webhooks", "description": "Webhook configuration and delivery"}
+  ],
+  "paths": {
+    "/health": {
+      "get": {
+        "tags": ["System"],
+        "summary": "Health check",
+        "description": "Check API availability and status",
+        "operationId": "healthCheck",
+        "responses": {
+          "200": {
+            "description": "API is healthy",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {"type": "string", "example": "healthy"},
+                    "timestamp": {"type": "string", "format": "date-time"}
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/register": {
+      "post": {
+        "tags": ["Authentication"],
+        "summary": "Register new user",
+        "operationId": "register",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "User registered successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthResponse"
+                }
+              }
+            }
+          },
+          "400": {"$ref": "#/components/responses/BadRequest"},
+          "409": {"description": "Email already registered"}
+        }
+      }
+    },
+    "/auth/login": {
+      "post": {
+        "tags": ["Authentication"],
+        "summary": "Login with email and password",
+        "operationId": "login",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Login successful",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthResponse"
+                }
+              }
+            }
+          },
+          "401": {"$ref": "#/components/responses/Unauthorized"}
+        }
+      }
+    },
+    "/auth/central/status": {
+      "get": {
+        "tags": ["Central Auth"],
+        "summary": "Check Central auth availability",
+        "operationId": "centralAuthStatus",
+        "responses": {
+          "200": {
+            "description": "Central auth status",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "central_auth_enabled": {"type": "boolean"},
+                    "issuer": {"type": "string"},
+                    "provider": {"type": "string"}
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/central/login": {
+      "get": {
+        "tags": ["Central Auth"],
+        "summary": "Initiate Central auth login",
+        "description": "Redirects to login.afterdarksys.com for OIDC authentication",
+        "operationId": "centralAuthLogin",
+        "responses": {
+          "302": {"description": "Redirect to Central auth"}
+        }
+      }
+    },
+    "/verify/file": {
+      "post": {
+        "tags": ["Verification"],
+        "summary": "Verify file hash",
+        "operationId": "verifyFile",
+        "security": [{"bearerAuth": []}, {"apiKey": []}],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["hash"],
+                "properties": {
+                  "hash": {"type": "string", "description": "SHA256 hash of file"},
+                  "filename": {"type": "string", "description": "Original filename"}
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Verification result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VerificationResult"
+                }
+              }
+            }
+          },
+          "401": {"$ref": "#/components/responses/Unauthorized"},
+          "429": {"$ref": "#/components/responses/RateLimited"}
+        }
+      }
+    },
+    "/dns/check": {
+      "post": {
+        "tags": ["DNS Tools"],
+        "summary": "DNS record lookup",
+        "operationId": "dnsCheck",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["domain"],
+                "properties": {
+                  "domain": {"type": "string", "example": "example.com"},
+                  "record_type": {"type": "string", "enum": ["A", "AAAA", "MX", "TXT", "NS", "CNAME", "SOA"], "default": "A"}
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "DNS records",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DNSResult"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ssl/validate": {
+      "post": {
+        "tags": ["SSL/TLS Tools"],
+        "summary": "Validate SSL certificate",
+        "operationId": "sslValidate",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["host"],
+                "properties": {
+                  "host": {"type": "string", "example": "example.com"},
+                  "port": {"type": "integer", "default": 443}
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "SSL validation result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SSLResult"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/tools/generate-hash": {
+      "post": {
+        "tags": ["Developer Tools"],
+        "summary": "Generate hash from input",
+        "operationId": "generateHash",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["input"],
+                "properties": {
+                  "input": {"type": "string"},
+                  "algorithm": {"type": "string", "enum": ["md5", "sha1", "sha256", "sha512"], "default": "sha256"}
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Hash result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "hash": {"type": "string"},
+                    "algorithm": {"type": "string"}
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/tools/regex-test": {
+      "post": {
+        "tags": ["Developer Tools"],
+        "summary": "Test regex pattern",
+        "operationId": "regexTest",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["pattern", "input"],
+                "properties": {
+                  "pattern": {"type": "string"},
+                  "input": {"type": "string"},
+                  "flags": {"type": "string", "default": ""}
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Regex test result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "matches": {"type": "boolean"},
+                    "groups": {"type": "array", "items": {"type": "string"}}
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/jwt/decode": {
+      "post": {
+        "tags": ["Developer Tools"],
+        "summary": "Decode JWT token",
+        "operationId": "jwtDecode",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["token"],
+                "properties": {
+                  "token": {"type": "string"}
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Decoded JWT",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "header": {"type": "object"},
+                    "payload": {"type": "object"},
+                    "signature": {"type": "string"}
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/security/secrets/scan": {
+      "post": {
+        "tags": ["Security Scanning"],
+        "summary": "Scan for exposed secrets",
+        "operationId": "secretsScan",
+        "security": [{"bearerAuth": []}, {"apiKey": []}],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["content"],
+                "properties": {
+                  "content": {"type": "string", "description": "Code or config content to scan"},
+                  "filename": {"type": "string"}
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Scan results",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SecretsResult"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/security/iam-policy/analyze": {
+      "post": {
+        "tags": ["Security Scanning"],
+        "summary": "Analyze IAM policy",
+        "operationId": "iamPolicyAnalyze",
+        "security": [{"bearerAuth": []}, {"apiKey": []}],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["policy"],
+                "properties": {
+                  "policy": {"type": "object", "description": "IAM policy JSON"}
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Policy analysis",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IAMAnalysisResult"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/batch": {
+      "post": {
+        "tags": ["Batch Operations"],
+        "summary": "Execute batch operations",
+        "description": "Execute multiple API operations in a single request",
+        "operationId": "batchExecute",
+        "security": [{"bearerAuth": []}, {"apiKey": []}],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BatchRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Batch results",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BatchResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api-keys": {
+      "get": {
+        "tags": ["API Keys"],
+        "summary": "List API keys",
+        "operationId": "listApiKeys",
+        "security": [{"bearerAuth": []}],
+        "responses": {
+          "200": {
+            "description": "List of API keys",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {"$ref": "#/components/schemas/ApiKey"}
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["API Keys"],
+        "summary": "Create API key",
+        "operationId": "createApiKey",
+        "security": [{"bearerAuth": []}],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["name"],
+                "properties": {
+                  "name": {"type": "string", "example": "Production API Key"}
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "API key created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiKey"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/billing/plans": {
+      "get": {
+        "tags": ["Billing"],
+        "summary": "Get available plans",
+        "operationId": "getBillingPlans",
+        "responses": {
+          "200": {
+            "description": "Available subscription plans",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {"$ref": "#/components/schemas/Plan"}
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/webhooks": {
+      "get": {
+        "tags": ["Webhooks"],
+        "summary": "List webhooks",
+        "operationId": "listWebhooks",
+        "security": [{"bearerAuth": []}],
+        "responses": {
+          "200": {
+            "description": "List of webhooks",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {"$ref": "#/components/schemas/Webhook"}
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["Webhooks"],
+        "summary": "Create webhook",
+        "operationId": "createWebhook",
+        "security": [{"bearerAuth": []}],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WebhookCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Webhook created",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/Webhook"}
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      },
+      "apiKey": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "X-API-Key"
+      }
+    },
+    "schemas": {
+      "RegisterRequest": {
+        "type": "object",
+        "required": ["email", "password"],
+        "properties": {
+          "email": {"type": "string", "format": "email"},
+          "password": {"type": "string", "minLength": 8}
+        }
+      },
+      "LoginRequest": {
+        "type": "object",
+        "required": ["email", "password"],
+        "properties": {
+          "email": {"type": "string", "format": "email"},
+          "password": {"type": "string"}
+        }
+      },
+      "AuthResponse": {
+        "type": "object",
+        "properties": {
+          "success": {"type": "boolean"},
+          "token": {"type": "string"},
+          "user": {
+            "type": "object",
+            "properties": {
+              "id": {"type": "string"},
+              "email": {"type": "string"}
+            }
+          }
+        }
+      },
+      "VerificationResult": {
+        "type": "object",
+        "properties": {
+          "success": {"type": "boolean"},
+          "verified": {"type": "boolean"},
+          "hash": {"type": "string"},
+          "malware_detected": {"type": "boolean"},
+          "threat_level": {"type": "string", "enum": ["none", "low", "medium", "high", "critical"]}
+        }
+      },
+      "DNSResult": {
+        "type": "object",
+        "properties": {
+          "success": {"type": "boolean"},
+          "domain": {"type": "string"},
+          "record_type": {"type": "string"},
+          "records": {"type": "array", "items": {"type": "object"}}
+        }
+      },
+      "SSLResult": {
+        "type": "object",
+        "properties": {
+          "success": {"type": "boolean"},
+          "valid": {"type": "boolean"},
+          "issuer": {"type": "string"},
+          "subject": {"type": "string"},
+          "expires": {"type": "string", "format": "date-time"},
+          "days_remaining": {"type": "integer"}
+        }
+      },
+      "SecretsResult": {
+        "type": "object",
+        "properties": {
+          "success": {"type": "boolean"},
+          "secrets_found": {"type": "integer"},
+          "findings": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "type": {"type": "string"},
+                "line": {"type": "integer"},
+                "severity": {"type": "string"}
+              }
+            }
+          }
+        }
+      },
+      "IAMAnalysisResult": {
+        "type": "object",
+        "properties": {
+          "success": {"type": "boolean"},
+          "risk_score": {"type": "integer", "minimum": 0, "maximum": 100},
+          "issues": {"type": "array", "items": {"type": "object"}}
+        }
+      },
+      "BatchRequest": {
+        "type": "object",
+        "required": ["operations"],
+        "properties": {
+          "operations": {
+            "type": "array",
+            "maxItems": 100,
+            "items": {
+              "type": "object",
+              "required": ["method", "path"],
+              "properties": {
+                "id": {"type": "string"},
+                "method": {"type": "string", "enum": ["GET", "POST"]},
+                "path": {"type": "string"},
+                "body": {"type": "object"}
+              }
+            }
+          }
+        }
+      },
+      "BatchResponse": {
+        "type": "object",
+        "properties": {
+          "success": {"type": "boolean"},
+          "results": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {"type": "string"},
+                "status": {"type": "integer"},
+                "body": {"type": "object"}
+              }
+            }
+          }
+        }
+      },
+      "ApiKey": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "string"},
+          "name": {"type": "string"},
+          "key": {"type": "string"},
+          "created_at": {"type": "string", "format": "date-time"}
+        }
+      },
+      "Plan": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "string"},
+          "name": {"type": "string"},
+          "price": {"type": "number"},
+          "features": {"type": "array", "items": {"type": "string"}}
+        }
+      },
+      "Webhook": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "string"},
+          "url": {"type": "string", "format": "uri"},
+          "events": {"type": "array", "items": {"type": "string"}},
+          "active": {"type": "boolean"}
+        }
+      },
+      "WebhookCreate": {
+        "type": "object",
+        "required": ["url", "events"],
+        "properties": {
+          "url": {"type": "string", "format": "uri"},
+          "events": {"type": "array", "items": {"type": "string"}},
+          "secret": {"type": "string"}
+        }
+      }
+    },
+    "responses": {
+      "BadRequest": {
+        "description": "Bad request",
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "success": {"type": "boolean", "example": false},
+                "error": {"type": "string"}
+              }
+            }
+          }
+        }
+      },
+      "Unauthorized": {
+        "description": "Unauthorized",
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "success": {"type": "boolean", "example": false},
+                "error": {"type": "string", "example": "Authentication required"}
+              }
+            }
+          }
+        }
+      },
+      "RateLimited": {
+        "description": "Rate limit exceeded",
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "success": {"type": "boolean", "example": false},
+                "error": {"type": "string", "example": "Rate limit exceeded"},
+                "retry_after": {"type": "integer"}
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

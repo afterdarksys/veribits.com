@@ -7,12 +7,15 @@ use VeriBits\Utils\Validator;
 use VeriBits\Utils\Logger;
 use VeriBits\Utils\Config;
 use VeriBits\Services\BillingService;
+use VeriBits\Services\StripeService;
 
 class BillingController {
     private BillingService $billingService;
+    private StripeService $stripeService;
 
     public function __construct() {
         $this->billingService = new BillingService();
+        $this->stripeService = new StripeService();
     }
 
     public function getAccount(): void {
@@ -203,26 +206,156 @@ class BillingController {
         }
     }
 
+    // ============================================================================
+    // Stripe Integration Endpoints
+    // ============================================================================
+
+    /**
+     * Get Stripe publishable key for frontend
+     * GET /api/billing/stripe/publishable-key
+     */
+    public function getStripePublishableKey(): void {
+        try {
+            $key = $this->stripeService->getPublishableKey();
+            Response::success(['publishable_key' => $key]);
+        } catch (\Exception $e) {
+            Logger::error('Failed to get Stripe publishable key', [
+                'error' => $e->getMessage()
+            ]);
+            Response::error('Failed to get Stripe key', 500);
+        }
+    }
+
+    /**
+     * Create Stripe checkout session
+     * POST /api/billing/stripe/create-checkout-session
+     * Body: { "plan": "pro" | "enterprise", "success_url": "...", "cancel_url": "..." }
+     */
+    public function createStripeCheckout(): void {
+        $claims = Auth::requireBearer();
+        $userId = $claims['sub'] ?? null;
+
+        $body = json_decode(file_get_contents('php://input'), true) ?? [];
+        $validator = new Validator($body);
+
+        $validator->required('plan')->in('plan', ['pro', 'enterprise'])
+                  ->required('success_url')->string('success_url')
+                  ->required('cancel_url')->string('cancel_url');
+
+        if (!$validator->isValid()) {
+            Response::validationError($validator->getErrors());
+            return;
+        }
+
+        try {
+            $result = $this->stripeService->createCheckoutSession(
+                $userId,
+                $validator->sanitize('plan'),
+                $validator->sanitize('success_url'),
+                $validator->sanitize('cancel_url')
+            );
+
+            if ($result['success']) {
+                Response::success([
+                    'session_id' => $result['session_id'],
+                    'checkout_url' => $result['checkout_url']
+                ]);
+            } else {
+                Response::error($result['error'] ?? 'Failed to create checkout session', 400);
+            }
+        } catch (\Exception $e) {
+            Logger::error('Failed to create Stripe checkout', [
+                'user_id' => $userId,
+                'error' => $e->getMessage()
+            ]);
+            Response::error('Failed to create checkout session', 500);
+        }
+    }
+
+    /**
+     * Create customer portal session
+     * POST /api/billing/stripe/create-portal-session
+     * Body: { "return_url": "..." }
+     */
+    public function createStripePortal(): void {
+        $claims = Auth::requireBearer();
+        $userId = $claims['sub'] ?? null;
+
+        $body = json_decode(file_get_contents('php://input'), true) ?? [];
+        $validator = new Validator($body);
+
+        $validator->required('return_url')->string('return_url');
+
+        if (!$validator->isValid()) {
+            Response::validationError($validator->getErrors());
+            return;
+        }
+
+        try {
+            $result = $this->stripeService->createPortalSession(
+                $userId,
+                $validator->sanitize('return_url')
+            );
+
+            if ($result['success']) {
+                Response::success(['portal_url' => $result['portal_url']]);
+            } else {
+                Response::error($result['error'] ?? 'Failed to create portal session', 400);
+            }
+        } catch (\Exception $e) {
+            Logger::error('Failed to create Stripe portal', [
+                'user_id' => $userId,
+                'error' => $e->getMessage()
+            ]);
+            Response::error('Failed to create portal session', 500);
+        }
+    }
+
+    /**
+     * Cancel Stripe subscription
+     * POST /api/billing/stripe/cancel-subscription
+     * Body: { "immediate": true|false } (optional)
+     */
+    public function cancelStripeSubscription(): void {
+        $claims = Auth::requireBearer();
+        $userId = $claims['sub'] ?? null;
+
+        $body = json_decode(file_get_contents('php://input'), true) ?? [];
+        $immediate = $body['immediate'] ?? false;
+
+        try {
+            $result = $this->stripeService->cancelSubscription($userId, $immediate);
+
+            if ($result['success']) {
+                Response::success([], 'Subscription cancelled successfully');
+            } else {
+                Response::error($result['error'] ?? 'Failed to cancel subscription', 400);
+            }
+        } catch (\Exception $e) {
+            Logger::error('Failed to cancel Stripe subscription', [
+                'user_id' => $userId,
+                'error' => $e->getMessage()
+            ]);
+            Response::error('Failed to cancel subscription', 500);
+        }
+    }
+
+    /**
+     * Stripe webhook handler
+     * POST /api/billing/stripe/webhook
+     */
     public function webhookStripe(): void {
         $payload = file_get_contents('php://input');
         $signature = $_SERVER['HTTP_STRIPE_SIGNATURE'] ?? '';
 
         try {
-            $event = $this->verifyStripeWebhook($payload, $signature);
+            $result = $this->stripeService->handleWebhook($payload, $signature);
 
-            switch ($event['type']) {
-                case 'invoice.payment_succeeded':
-                    $this->handlePaymentSucceeded($event['data']['object']);
-                    break;
-                case 'invoice.payment_failed':
-                    $this->handlePaymentFailed($event['data']['object']);
-                    break;
-                case 'customer.subscription.deleted':
-                    $this->handleSubscriptionCancelled($event['data']['object']);
-                    break;
+            if ($result['success']) {
+                Response::success([], 'Webhook processed');
+            } else {
+                Response::error($result['error'] ?? 'Webhook processing failed', 400);
             }
-
-            Response::success([], 'Webhook processed');
         } catch (\Exception $e) {
             Logger::error('Stripe webhook processing failed', [
                 'error' => $e->getMessage(),
@@ -230,36 +363,5 @@ class BillingController {
             ]);
             Response::error('Webhook processing failed', 400);
         }
-    }
-
-    private function verifyStripeWebhook(string $payload, string $signature): array {
-        $webhookSecret = Config::get('STRIPE_WEBHOOK_SECRET');
-
-        if (!$webhookSecret) {
-            throw new \RuntimeException('Stripe webhook secret not configured');
-        }
-
-        return json_decode($payload, true);
-    }
-
-    private function handlePaymentSucceeded(array $invoice): void {
-        Logger::info('Payment succeeded webhook', [
-            'invoice_id' => $invoice['id'],
-            'amount' => $invoice['amount_paid']
-        ]);
-    }
-
-    private function handlePaymentFailed(array $invoice): void {
-        Logger::warning('Payment failed webhook', [
-            'invoice_id' => $invoice['id'],
-            'amount' => $invoice['amount_due']
-        ]);
-    }
-
-    private function handleSubscriptionCancelled(array $subscription): void {
-        Logger::info('Subscription cancelled webhook', [
-            'subscription_id' => $subscription['id'],
-            'customer' => $subscription['customer']
-        ]);
     }
 }

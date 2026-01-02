@@ -401,6 +401,12 @@ def main():
         help='Root directories to scan (default: system roots)'
     )
     parser.add_argument(
+        '--files',
+        nargs='+',
+        default=None,
+        help='Specific file(s) to hash instead of scanning directories'
+    )
+    parser.add_argument(
         '--threads',
         type=int,
         default=32,
@@ -439,24 +445,75 @@ def main():
 
     args = parser.parse_args()
 
-    # Get root paths
-    root_paths = args.root if args.root else get_default_roots()
+    # Handle file-specific hashing
+    if args.files:
+        # Validate that all provided files exist
+        valid_files = []
+        for file_path in args.files:
+            if os.path.isfile(file_path):
+                valid_files.append(file_path)
+            else:
+                print(f"Warning: '{file_path}' is not a valid file, skipping", file=sys.stderr)
 
-    # Verify root paths exist
-    valid_roots = [r for r in root_paths if os.path.exists(r)]
-    if not valid_roots:
-        print("Error: No valid root paths found", file=sys.stderr)
-        sys.exit(1)
+        if not valid_files:
+            print("Error: No valid files provided", file=sys.stderr)
+            sys.exit(1)
 
-    # Create hasher and scan
-    hasher = FileHasher(
-        root_paths=valid_roots,
-        num_threads=args.threads,
-        chunk_size=args.chunk_size,
-        hash_algorithms=args.hash
-    )
+        print(f"Hashing {len(valid_files)} file(s)...", file=sys.stderr)
+        print(f"Hash algorithms: {', '.join(args.hash)}", file=sys.stderr)
 
-    results = hasher.scan()
+        # Create a minimal hasher instance just for hashing
+        hasher = FileHasher(
+            root_paths=[],
+            num_threads=1,
+            chunk_size=args.chunk_size,
+            hash_algorithms=args.hash
+        )
+
+        # Hash each file
+        file_results = []
+        for file_path in valid_files:
+            abs_path = os.path.abspath(file_path)
+            path_obj = Path(abs_path)
+            result = hasher._process_file(path_obj, os.path.dirname(abs_path))
+            if result:
+                file_results.append(result)
+                print(f"Hashed: {file_path}", file=sys.stderr)
+            else:
+                print(f"Failed to hash: {file_path}", file=sys.stderr)
+
+        # Build results in the same format as directory scan
+        results = {
+            'system_name': hasher._get_hostname(),
+            'system_ip': hasher._get_local_ip(),
+            'system_public': hasher._get_public_ip(),
+            'os_type': hasher.os_type,
+            'os_version': platform.platform(),
+            'hash_algorithms': args.hash,
+            'scan_date': datetime.utcnow().isoformat() + 'Z',
+            'total_files': len(file_results),
+            'total_errors': len(valid_files) - len(file_results),
+            'directories': [{'dir_name': 'specified_files', 'files': file_results}] if file_results else []
+        }
+    else:
+        # Get root paths
+        root_paths = args.root if args.root else get_default_roots()
+
+        # Verify root paths exist
+        valid_roots = [r for r in root_paths if os.path.exists(r)]
+        if not valid_roots:
+            print("Error: No valid root paths found", file=sys.stderr)
+            sys.exit(1)
+
+        # Create hasher and scan
+        hasher = FileHasher(
+            root_paths=valid_roots,
+            num_threads=args.threads,
+            chunk_size=args.chunk_size,
+            hash_algorithms=args.hash
+        )
+
+        results = hasher.scan()
 
     # Write output to local file
     print(f"\nWriting results to {args.output}...", file=sys.stderr)

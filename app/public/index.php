@@ -230,6 +230,32 @@ try {
         exit;
     }
 
+    // After Dark Systems Central Auth (OIDC) endpoints
+    if ($uri === '/api/v1/auth/central/status' && $method === 'GET') {
+        (new \VeriBits\Controllers\CentralAuthController())->status();
+        exit;
+    }
+    if ($uri === '/api/v1/auth/central/login' && $method === 'GET') {
+        (new \VeriBits\Controllers\CentralAuthController())->login();
+        exit;
+    }
+    if ($uri === '/api/v1/auth/central/callback' && $method === 'GET') {
+        (new \VeriBits\Controllers\CentralAuthController())->callback();
+        exit;
+    }
+    if ($uri === '/api/v1/auth/central/userinfo' && $method === 'GET') {
+        (new \VeriBits\Controllers\CentralAuthController())->userinfo();
+        exit;
+    }
+    if ($uri === '/api/v1/auth/central/logout' && $method === 'POST') {
+        (new \VeriBits\Controllers\CentralAuthController())->logout();
+        exit;
+    }
+    if ($uri === '/api/v1/auth/central/link' && $method === 'POST') {
+        (new \VeriBits\Controllers\CentralAuthController())->link();
+        exit;
+    }
+
     // Admin endpoints
     if ($uri === '/api/v1/admin/migrate' && $method === 'POST') {
         (new AdminController())->runMigrations();
@@ -408,6 +434,24 @@ try {
     }
     if ($uri === '/api/v1/billing/webhook/stripe' && $method === 'POST') {
         (new BillingController())->webhookStripe();
+        exit;
+    }
+
+    // Stripe-specific endpoints
+    if ($uri === '/api/v1/billing/stripe/publishable-key' && $method === 'GET') {
+        (new BillingController())->getStripePublishableKey();
+        exit;
+    }
+    if ($uri === '/api/v1/billing/stripe/create-checkout-session' && $method === 'POST') {
+        (new BillingController())->createStripeCheckout();
+        exit;
+    }
+    if ($uri === '/api/v1/billing/stripe/create-portal-session' && $method === 'POST') {
+        (new BillingController())->createStripePortal();
+        exit;
+    }
+    if ($uri === '/api/v1/billing/stripe/cancel-subscription' && $method === 'POST') {
+        (new BillingController())->cancelStripeSubscription();
         exit;
     }
 
@@ -640,6 +684,20 @@ try {
     }
     if ($uri === '/api/v1/tools/cert-convert' && $method === 'POST') {
         (new NetworkToolsController())->certConvert();
+        exit;
+    }
+
+    // Batch Operations API (requires authentication)
+    if ($uri === '/api/v1/batch' && $method === 'POST') {
+        (new \VeriBits\Controllers\BatchController())->execute();
+        exit;
+    }
+
+    // OpenAPI Documentation
+    if ($uri === '/api/v1/openapi.json' && $method === 'GET') {
+        header('Content-Type: application/json');
+        header('Access-Control-Allow-Origin: *');
+        readfile(__DIR__ . '/api/openapi.json');
         exit;
     }
 

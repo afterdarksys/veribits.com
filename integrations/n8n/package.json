@@ -1,0 +1,61 @@
+{
+  "name": "n8n-nodes-veribits",
+  "version": "1.0.0",
+  "description": "n8n nodes for VeriBits security and verification tools",
+  "keywords": [
+    "n8n-community-node-package",
+    "security",
+    "verification",
+    "dns",
+    "ssl",
+    "hash",
+    "secrets"
+  ],
+  "license": "MIT",
+  "homepage": "https://veribits.com",
+  "author": {
+    "name": "After Dark Systems",
+    "email": "support@afterdarksys.com"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/afterdarksystems/n8n-nodes-veribits.git"
+  },
+  "main": "index.js",
+  "scripts": {
+    "build": "tsc && gulp build:icons",
+    "dev": "tsc --watch",
+    "format": "prettier nodes credentials --write",
+    "lint": "eslint nodes credentials --ext .ts",
+    "lintfix": "eslint nodes credentials --ext .ts --fix",
+    "prepublishOnly": "npm run build"
+  },
+  "files": [
+    "dist"
+  ],
+  "n8n": {
+    "n8nNodesApiVersion": 1,
+    "credentials": [
+      "dist/credentials/VeriBitsApi.credentials.js"
+    ],
+    "nodes": [
+      "dist/nodes/VeriBits.node.js",
+      "dist/nodes/VeriBitsTrigger.node.js"
+    ]
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "@typescript-eslint/parser": "^6.0.0",
+    "eslint": "^8.50.0",
+    "gulp": "^4.0.2",
+    "n8n-workflow": "*",
+    "prettier": "^3.0.0",
+    "typescript": "^5.2.0"
+  },
+  "peerDependencies": {
+    "n8n-workflow": "*"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

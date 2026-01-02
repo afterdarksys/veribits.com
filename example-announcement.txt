@@ -1,0 +1,42 @@
+Hello VeriBits Users!
+
+We're excited to announce several major updates to the platform:
+
+NEW ENTERPRISE FEATURES:
+
+🦠 Malware Detonation Sandbox
+   Safely analyze suspicious files in an isolated environment powered by Cuckoo Sandbox.
+   Get detailed reports including IOCs, network activity, and behavioral analysis.
+
+🔌 Netcat Network Tool
+   Advanced TCP/UDP testing with banner grabbing and service detection.
+   Perfect for network diagnostics and security testing.
+
+🔐 OAuth2 & Webhooks
+   Integrate VeriBits with Zapier, n8n, and custom automation workflows.
+   Build powerful security automation pipelines.
+
+⭐ Pro Subscriptions
+   Unlock enhanced features with Pro plans and enterprise licensing.
+
+📚 Enhanced Documentation
+   New security documentation page with compliance information and best practices.
+
+COMMAND-LINE INTERFACE UPDATES:
+
+• New malware analysis commands
+• Job scheduling with cron syntax
+• Local caching for offline mode
+• Plugin system for extensibility
+• Batch processing support
+
+All tools are now available at https://veribits.com/tools.php
+
+Questions? Reach out to support@afterdarksys.com
+
+Best regards,
+The VeriBits Team
+
+---
+© 2025 VeriBits - Professional Security & Cryptographic Tools
+Powered by AfterDark Systems

@@ -29,7 +29,7 @@
             </p>
 
             <!-- NEW FEATURES SECTION -->
-            <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 16px; padding: 2.5rem; margin-bottom: 3rem; text-align: center; box-shadow: 0 8px 32px rgba(102, 126, 234, 0.3);">
+            <div style="background: linear-gradient(135deg, #1e40af 0%, #3730a3 100%); border-radius: 16px; padding: 2.5rem; margin-bottom: 3rem; text-align: center; box-shadow: 0 8px 32px rgba(30, 64, 175, 0.3);">
                 <h2 style="color: white; margin: 0 0 1rem 0; font-size: 2rem; display: flex; align-items: center; justify-content: center; gap: 0.5rem;">
                     🔥 New Enterprise Features
                 </h2>
@@ -39,7 +39,7 @@
 
                 <div class="tools-grid" style="text-align: left;">
                     <div class="tool-card" style="background: rgba(255, 255, 255, 0.95); cursor: pointer; position: relative; overflow: hidden;" onclick="window.location='/tool/malware-detonation.php'">
-                        <div style="position: absolute; top: 10px; right: 10px; background: linear-gradient(135deg, #667eea, #764ba2); color: white; padding: 0.3rem 0.8rem; border-radius: 12px; font-size: 0.75rem; font-weight: bold; box-shadow: 0 2px 8px rgba(0,0,0,0.15);">
+                        <div style="position: absolute; top: 10px; right: 10px; background: linear-gradient(135deg, #1e40af, #3730a3); color: white; padding: 0.3rem 0.8rem; border-radius: 12px; font-size: 0.75rem; font-weight: bold; box-shadow: 0 2px 8px rgba(0,0,0,0.15);">
                             ENTERPRISE
                         </div>
                         <div class="feature-icon">🦠</div>
@@ -59,7 +59,7 @@
                     </div>
 
                     <div class="tool-card" style="background: rgba(255, 255, 255, 0.95); cursor: pointer; position: relative; overflow: hidden;" onclick="window.location='/security.php'">
-                        <div style="position: absolute; top: 10px; right: 10px; background: linear-gradient(135deg, #667eea, #764ba2); color: white; padding: 0.3rem 0.8rem; border-radius: 12px; font-size: 0.75rem; font-weight: bold; box-shadow: 0 2px 8px rgba(0,0,0,0.15);">
+                        <div style="position: absolute; top: 10px; right: 10px; background: linear-gradient(135deg, #1e40af, #3730a3); color: white; padding: 0.3rem 0.8rem; border-radius: 12px; font-size: 0.75rem; font-weight: bold; box-shadow: 0 2px 8px rgba(0,0,0,0.15);">
                             NEW
                         </div>
                         <div class="feature-icon">🔒</div>

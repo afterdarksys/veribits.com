@@ -77,14 +77,22 @@ RUN a2enmod rewrite headers && \
     Require all granted\n\
 </Directory>' >> /etc/apache2/apache2.conf
 
-# Configure PHP for POST data handling
+# Configure PHP for POST data handling and password hashing
 RUN echo "max_input_vars = 5000" >> /usr/local/etc/php/conf.d/uploads.ini && \
     echo "post_max_size = 100M" >> /usr/local/etc/php/conf.d/uploads.ini && \
     echo "upload_max_filesize = 100M" >> /usr/local/etc/php/conf.d/uploads.ini && \
     echo "max_execution_time = 300" >> /usr/local/etc/php/conf.d/uploads.ini && \
     echo "memory_limit = 512M" >> /usr/local/etc/php/conf.d/uploads.ini && \
     echo "enable_post_data_reading = On" >> /usr/local/etc/php/conf.d/uploads.ini && \
-    echo "always_populate_raw_post_data = -1" >> /usr/local/etc/php/conf.d/uploads.ini
+    echo "always_populate_raw_post_data = -1" >> /usr/local/etc/php/conf.d/uploads.ini && \
+    # Ensure BCrypt is properly configured \
+    echo "; BCrypt password hashing configuration" >> /usr/local/etc/php/conf.d/password.ini && \
+    echo "default_charset = UTF-8" >> /usr/local/etc/php/conf.d/password.ini && \
+    # Test BCrypt functionality \
+    php -r "echo 'BCrypt test: ' . (password_verify('test', password_hash('test', PASSWORD_BCRYPT)) ? 'PASS' : 'FAIL') . PHP_EOL;" && \
+    # Test crypt() fallback \
+    php -r "\$h = crypt('test', '\$2y\$10\$1234567890123456789012'); echo 'Crypt test: ' . (hash_equals(\$h, crypt('test', \$h)) ? 'PASS' : 'FAIL') . PHP_EOL;" && \
+    php -m | grep -E "(hash|crypt)" || echo "Warning: hash/crypt modules check"
 
 # Create directories for file uploads
 RUN mkdir -p /tmp/veribits-scans /tmp/veribits-archives \
@@ -159,8 +167,10 @@ RUN echo "Clearing all caches..." && \
     echo "opcache.memory_consumption=256" >> /usr/local/etc/php/conf.d/opcache.ini && \
     echo "opcache.interned_strings_buffer=16" >> /usr/local/etc/php/conf.d/opcache.ini && \
     echo "opcache.max_accelerated_files=10000" >> /usr/local/etc/php/conf.d/opcache.ini && \
-    echo "opcache.revalidate_freq=2" >> /usr/local/etc/php/conf.d/opcache.ini && \
+    echo "opcache.revalidate_freq=0" >> /usr/local/etc/php/conf.d/opcache.ini && \
     echo "opcache.validate_timestamps=1" >> /usr/local/etc/php/conf.d/opcache.ini && \
+    echo "opcache.consistency_checks=1" >> /usr/local/etc/php/conf.d/opcache.ini && \
+    echo "opcache.force_restart_timeout=180" >> /usr/local/etc/php/conf.d/opcache.ini && \
     echo "Cache clearing complete!"
 
 # Copy and configure entrypoint script

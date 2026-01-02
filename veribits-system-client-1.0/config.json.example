@@ -1,5 +1,5 @@
 {
-  "endpoint_url": "https://api.example.com/hashes/upload",
-  "email": "user@example.com",
-  "api_key": "your-api-key-here"
+  "endpoint_url": "https://veribits.com/api/v1/system-scans",
+  "email": "your-email@example.com",
+  "api_key": "vb_your_api_key_here_48_characters_long_hex"
 }

@@ -45,9 +45,14 @@
 
         <div style="text-align: center; margin-top: 2rem; padding-top: 2rem; border-top: 1px solid var(--border-color);">
             <p style="color: var(--text-secondary); margin-bottom: 1rem;">Or log in with</p>
-            <div style="display: flex; gap: 1rem; justify-content: center;">
-                <button class="btn btn-secondary" onclick="socialLogin('google')">🔍 Google</button>
-                <button class="btn btn-secondary" onclick="socialLogin('github')">🐙 GitHub</button>
+            <div style="display: flex; flex-direction: column; gap: 1rem; align-items: center;">
+                <a href="/api/v1/auth/central/login" class="btn btn-primary" style="width: 100%; max-width: 300px; display: flex; align-items: center; justify-content: center; gap: 0.5rem;">
+                    <span style="font-weight: bold;">After</span><span style="color: #3730a3;">Cloak</span> SSO
+                </a>
+                <div style="display: flex; gap: 1rem;">
+                    <button class="btn btn-secondary" onclick="socialLogin('google')">Google</button>
+                    <button class="btn btn-secondary" onclick="socialLogin('github')">GitHub</button>
+                </div>
             </div>
         </div>
 

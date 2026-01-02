@@ -18,6 +18,12 @@ if (loginForm) {
             if (response.data && response.data.access_token) {
                 setAuthToken(response.data.access_token);
                 localStorage.setItem('veribits_user', JSON.stringify(response.data.user));
+
+                // Update navigation before redirecting
+                if (typeof updateNavigation === 'function') {
+                    updateNavigation();
+                }
+
                 window.location.href = '/dashboard.php';
             } else {
                 showAlert('Login failed - invalid response', 'error');
@@ -53,6 +59,12 @@ if (signupForm) {
                 setAuthToken(response.data.access_token);
                 localStorage.setItem('veribits_user', JSON.stringify(response.data.user));
                 showAlert('Account created successfully!', 'success');
+
+                // Update navigation
+                if (typeof updateNavigation === 'function') {
+                    updateNavigation();
+                }
+
                 setTimeout(() => {
                     window.location.href = '/dashboard.php';
                 }, 1500);

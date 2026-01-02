@@ -30,6 +30,67 @@ class Response {
         ]);
     }
 
+    /**
+     * Send a cacheable JSON response with ETag support
+     * Use this for GET endpoints that return relatively static data
+     *
+     * @param array $data Response data
+     * @param string $message Success message
+     * @param int $maxAge Cache-Control max-age in seconds (default: 300 = 5 minutes)
+     * @param bool $private Whether cache should be private (default: true for authenticated)
+     */
+    public static function cached(array $data, string $message = 'Success', int $maxAge = 300, bool $private = true): void {
+        $response = [
+            'success' => true,
+            'message' => $message,
+            'data' => $data,
+            'timestamp' => date('c')
+        ];
+
+        $jsonContent = json_encode($response, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+        $etag = '"' . md5($jsonContent) . '"';
+
+        // Check If-None-Match header
+        $clientEtag = $_SERVER['HTTP_IF_NONE_MATCH'] ?? '';
+        if ($clientEtag === $etag) {
+            http_response_code(304);
+            header("ETag: $etag");
+            return;
+        }
+
+        // Set caching headers
+        $cacheControl = $private ? 'private' : 'public';
+        $cacheControl .= ", max-age=$maxAge, must-revalidate";
+
+        http_response_code(200);
+        self::setSecurityHeaders();
+        header('Content-Type: application/json; charset=utf-8');
+        header("ETag: $etag");
+        header("Cache-Control: $cacheControl");
+        header('Vary: Accept, Authorization');
+
+        echo $jsonContent;
+    }
+
+    /**
+     * Send a response that should never be cached
+     */
+    public static function noCache(array $data, string $message = 'Success'): void {
+        http_response_code(200);
+        self::setSecurityHeaders();
+        header('Content-Type: application/json; charset=utf-8');
+        header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+        header('Pragma: no-cache');
+        header('Expires: Thu, 01 Jan 1970 00:00:00 GMT');
+
+        echo json_encode([
+            'success' => true,
+            'message' => $message,
+            'data' => $data,
+            'timestamp' => date('c')
+        ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+    }
+
     public static function error(string $message, int $code = 400, array $details = []): void {
         self::json([
             'success' => false,

@@ -5,6 +5,7 @@ use VeriBits\Utils\Database;
 use VeriBits\Utils\Response;
 use VeriBits\Utils\RateLimit;
 use VeriBits\Utils\Logger;
+use VeriBits\Utils\Auth;
 
 class CodeSigningController {
     private const CERT_PATH = '/etc/veribits/certs';
@@ -45,9 +46,10 @@ class CodeSigningController {
                 return;
             }
 
-            // Check quota
+            // Check quota - get user from optional auth
             $userIp = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
-            $userId = null; // TODO: Get from session when auth is implemented
+            $authResult = Auth::optionalAuth();
+            $userId = $authResult['authenticated'] ? ($authResult['user_id'] ?? null) : null;
 
             $canSign = $this->checkQuota($userId, $userIp);
             if (!$canSign) {
@@ -318,7 +320,8 @@ class CodeSigningController {
     }
 
     public function getQuota(): void {
-        $userId = null; // TODO: Get from session
+        $authResult = Auth::optionalAuth();
+        $userId = $authResult['authenticated'] ? ($authResult['user_id'] ?? null) : null;
         $userIp = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
 
         if ($userId) {

@@ -1,0 +1,12 @@
+  Test it right now:
+  php scripts/email-broadcast.php \
+    -s "Test Email" \
+    -m "Hello from VeriBits!" \
+    --test \
+    --test-email "your@email.com"
+
+  Or send the announcement to everyone:
+  php scripts/email-broadcast.php \
+    -s "VeriBits Enterprise Features Released" \
+    -f example-announcement.txt \
+    -t all

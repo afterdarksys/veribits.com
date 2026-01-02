@@ -9,6 +9,7 @@ use VeriBits\Utils\Config;
 use VeriBits\Utils\Logger;
 use VeriBits\Utils\RateLimit;
 use VeriBits\Utils\Request;
+use VeriBits\Services\EmailService;
 
 class AuthController {
     public function register(): void {
@@ -82,6 +83,20 @@ class AuthController {
                 'user_id' => $userId,
                 'email' => $email
             ]);
+
+            // Send welcome email
+            try {
+                $emailService = new EmailService();
+                $username = explode('@', $email)[0]; // Extract username from email
+                $emailService->sendWelcomeEmail($email, $username);
+                Logger::info('Welcome email sent', ['email' => $email]);
+            } catch (\Exception $e) {
+                Logger::warning('Welcome email failed', [
+                    'email' => $email,
+                    'error' => $e->getMessage()
+                ]);
+                // Don't fail registration if email fails
+            }
 
             Response::success([
                 'user_id' => $userId,
@@ -166,11 +181,30 @@ class AuthController {
         $email = $validator->sanitize('email');
         $password = $body['password'];
 
+        error_log("DEBUG [AuthController::login]: About to query database for email = " . $email);
+
         try {
             $user = Database::fetch(
                 "SELECT id, email, password_hash, status FROM users WHERE email = :email",
                 ['email' => $email]
             );
+
+            error_log("DEBUG [AuthController::login]: Database query completed");
+            error_log("DEBUG [AuthController::login]: User found = " . (!empty($user) ? 'YES' : 'NO'));
+            error_log("DEBUG [AuthController::login]: Has password_hash = " . (isset($user['password_hash']) && !empty($user['password_hash']) ? 'YES' : 'NO'));
+            error_log("DEBUG [AuthController::login]: password_hash_from_db = " . ($user['password_hash'] ?? 'NULL'));
+            error_log("DEBUG [AuthController::login]: password_hash_hex = " . bin2hex($user['password_hash'] ?? ''));
+
+            // DEBUG: Log user lookup result
+            Logger::info('User lookup result', [
+                'email' => $email,
+                'found' => !empty($user),
+                'user_id' => $user['id'] ?? 'null',
+                'has_password_hash' => isset($user['password_hash']) && !empty($user['password_hash']),
+                'password_hash_length' => isset($user['password_hash']) ? strlen($user['password_hash']) : 0,
+                'password_hash_preview' => isset($user['password_hash']) ? substr($user['password_hash'], 0, 20) . '...' : 'NULL',
+                'status' => $user['status'] ?? 'null'
+            ]);
 
             if (!$user || !Auth::verifyPassword($password, $user['password_hash'])) {
                 Logger::security('Failed login attempt', [

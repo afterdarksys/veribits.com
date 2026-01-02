@@ -6,6 +6,7 @@ use VeriBits\Utils\Validator;
 use VeriBits\Utils\RateLimit;
 use VeriBits\Utils\Logger;
 use VeriBits\Utils\Database;
+use VeriBits\Services\SecretManager;
 
 class HaveIBeenPwnedController {
     private const HIBP_API_BASE = 'https://haveibeenpwned.com/api/v3';
@@ -15,14 +16,23 @@ class HaveIBeenPwnedController {
     private const RATE_LIMIT_AUTHENTICATED = 50; // per minute
 
     private string $hibpApiKey;
+    private SecretManager $secretManager;
 
     /**
-     * Constructor - loads HIBP API key from environment
+     * Constructor - loads HIBP API key from SecretManager with environment fallback
      */
     public function __construct() {
-        $this->hibpApiKey = $_ENV['HIBP_API_KEY'] ?? '';
+        $this->secretManager = SecretManager::getInstance();
+
+        // Attempt to get HIBP API key from SecretManager (tries SecretServer, then environment)
+        $this->hibpApiKey = $this->secretManager->getSecret('HIBP_API_KEY', '') ?? '';
+
         if (empty($this->hibpApiKey)) {
-            Logger::error('HIBP_API_KEY not configured in environment variables');
+            Logger::error('HIBP_API_KEY not configured in SecretServer or environment variables');
+        } else {
+            Logger::info('HIBP_API_KEY loaded successfully', [
+                'source' => $this->secretManager->isSecretServerAvailable() ? 'SecretServer' : 'Environment'
+            ]);
         }
     }
 

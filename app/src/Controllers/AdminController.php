@@ -4,9 +4,45 @@ namespace VeriBits\Controllers;
 use VeriBits\Utils\Response;
 use VeriBits\Utils\Database;
 use VeriBits\Utils\Logger;
+use VeriBits\Utils\Auth;
+use VeriBits\Utils\Config;
 
 class AdminController {
+
+    /**
+     * Admin API key for protected endpoints
+     * This should be set in .env as ADMIN_API_KEY
+     */
+    private function requireAdminAuth(): void {
+        // Check for admin API key in header
+        $adminKey = $_SERVER['HTTP_X_ADMIN_KEY'] ?? null;
+        $expectedKey = Config::get('ADMIN_API_KEY', '');
+
+        if (empty($expectedKey)) {
+            Logger::critical('ADMIN_API_KEY not configured - admin endpoints disabled');
+            Response::error('Admin endpoints not configured', 503);
+            exit;
+        }
+
+        if (!$adminKey || !hash_equals($expectedKey, $adminKey)) {
+            Logger::security('Unauthorized admin access attempt', [
+                'ip' => $_SERVER['REMOTE_ADDR'] ?? 'unknown',
+                'endpoint' => $_SERVER['REQUEST_URI'] ?? 'unknown'
+            ]);
+            Response::error('Unauthorized - admin access required', 401);
+            exit;
+        }
+
+        Logger::info('Admin access granted', [
+            'ip' => $_SERVER['REMOTE_ADDR'] ?? 'unknown',
+            'endpoint' => $_SERVER['REQUEST_URI'] ?? 'unknown'
+        ]);
+    }
+
     public function resetPassword(): void {
+        // SECURITY: Require admin authentication
+        $this->requireAdminAuth();
+
         try {
             $body = json_decode(file_get_contents('php://input'), true) ?? [];
             $email = $body['email'] ?? null;
@@ -18,7 +54,9 @@ class AdminController {
                 return;
             }
 
-            $hash = password_hash($password, PASSWORD_ARGON2ID);
+            // Use BCrypt with cost=10 to match Auth::hashPassword()
+            // This ensures consistency across all password operations
+            $hash = password_hash($password, PASSWORD_BCRYPT, ['cost' => 10]);
             $pdo = Database::getConnection();
 
             // Check if user exists
@@ -59,13 +97,18 @@ class AdminController {
     }
 
     public function testRegister(): void {
+        // SECURITY: Require admin authentication
+        $this->requireAdminAuth();
+
         try {
             $body = json_decode(file_get_contents('php://input'), true) ?? [];
             $email = $body['email'] ?? 'test@test.com';
             $password = $body['password'] ?? 'Password@123';
 
             // Test hash
-            $hash = password_hash($password, PASSWORD_ARGON2ID);
+            // Use BCrypt with cost=10 to match Auth::hashPassword()
+            // This ensures consistency across all password operations
+            $hash = password_hash($password, PASSWORD_BCRYPT, ['cost' => 10]);
 
             // Test API key
             $apiKey = 'vb_' . bin2hex(random_bytes(24));
@@ -88,6 +131,9 @@ class AdminController {
     }
 
     public function runMigrations(): void {
+        // SECURITY: Require admin authentication
+        $this->requireAdminAuth();
+
         try {
             $results = [];
             $pdo = Database::getConnection();

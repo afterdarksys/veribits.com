@@ -8,8 +8,7 @@
 
     <!-- DNS Science Analytics -->
     <script src="https://www.dnsscience.io/static/js/analytics_track.js"
-            data-token="dsa_live_d51afb46c704fe2594c15ed82717cb7703c8ab5c7185e481"
-            data-endpoint="https://www.dnsscience.io/api/analytics/track"
+            data-token="dsa_f27457f6331c764b8a53dadf4b5aff75a1f1dfdc171c6bce977666dd"
             async></script>
 </head>
 <body>

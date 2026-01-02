@@ -1,0 +1,304 @@
+{
+  "version": "1.0.0",
+  "platformVersion": "15.0.0",
+  "authentication": {
+    "type": "oauth2",
+    "oauth2Config": {
+      "authorizeUrl": "https://veribits.com/api/v1/oauth/authorize?client_id={{process.env.CLIENT_ID}}&redirect_uri={{bundle.inputData.redirect_uri}}&state={{bundle.inputData.state}}",
+      "getAccessToken": {
+        "method": "POST",
+        "url": "https://veribits.com/api/v1/oauth/token",
+        "body": {
+          "code": "{{bundle.inputData.code}}",
+          "client_id": "{{process.env.CLIENT_ID}}",
+          "client_secret": "{{process.env.CLIENT_SECRET}}",
+          "redirect_uri": "{{bundle.inputData.redirect_uri}}",
+          "grant_type": "authorization_code"
+        }
+      },
+      "refreshAccessToken": {
+        "method": "POST",
+        "url": "https://veribits.com/api/v1/oauth/token",
+        "body": {
+          "refresh_token": "{{bundle.authData.refresh_token}}",
+          "client_id": "{{process.env.CLIENT_ID}}",
+          "client_secret": "{{process.env.CLIENT_SECRET}}",
+          "grant_type": "refresh_token"
+        }
+      },
+      "scope": "read write",
+      "autoRefresh": true
+    },
+    "test": {
+      "url": "https://veribits.com/api/v1/auth/status"
+    },
+    "connectionLabel": "{{email}}"
+  },
+  "triggers": {
+    "hashFound": {
+      "key": "hash_found",
+      "noun": "Hash",
+      "display": {
+        "label": "Hash Found",
+        "description": "Triggers when a hash is successfully cracked",
+        "important": true
+      },
+      "operation": {
+        "type": "hook",
+        "perform": {
+          "url": "https://veribits.com/api/v1/webhooks",
+          "method": "POST",
+          "body": {
+            "url": "{{bundle.targetUrl}}",
+            "events": ["hash.found"]
+          }
+        },
+        "performUnsubscribe": {
+          "url": "https://veribits.com/api/v1/webhooks/{{bundle.subscribeData.id}}",
+          "method": "DELETE"
+        },
+        "performList": {
+          "url": "https://veribits.com/api/v1/tools/hash-lookup/recent"
+        },
+        "sample": {
+          "id": "123",
+          "hash": "5f4dcc3b5aa765d61d8327deb882cf99",
+          "plaintext": "password",
+          "hash_type": "md5",
+          "timestamp": "2025-01-28T12:00:00Z"
+        }
+      }
+    },
+    "malwareDetected": {
+      "key": "malware_detected",
+      "noun": "Malware",
+      "display": {
+        "label": "Malware Detected",
+        "description": "Triggers when malware is detected in a file",
+        "important": true
+      },
+      "operation": {
+        "type": "hook",
+        "perform": {
+          "url": "https://veribits.com/api/v1/webhooks",
+          "method": "POST",
+          "body": {
+            "url": "{{bundle.targetUrl}}",
+            "events": ["malware.detected"]
+          }
+        },
+        "performUnsubscribe": {
+          "url": "https://veribits.com/api/v1/webhooks/{{bundle.subscribeData.id}}",
+          "method": "DELETE"
+        },
+        "sample": {
+          "id": "456",
+          "file_name": "suspicious.exe",
+          "file_hash": "d41d8cd98f00b204e9800998ecf8427e",
+          "threats": [
+            {
+              "name": "Trojan.Generic.12345",
+              "severity": "high",
+              "category": "trojan"
+            }
+          ],
+          "threat_count": 1,
+          "timestamp": "2025-01-28T12:00:00Z"
+        }
+      }
+    },
+    "scanCompleted": {
+      "key": "scan_completed",
+      "noun": "Scan",
+      "display": {
+        "label": "Scan Completed",
+        "description": "Triggers when a security scan completes"
+      },
+      "operation": {
+        "type": "hook",
+        "perform": {
+          "url": "https://veribits.com/api/v1/webhooks",
+          "method": "POST",
+          "body": {
+            "url": "{{bundle.targetUrl}}",
+            "events": ["scan.completed"]
+          }
+        },
+        "performUnsubscribe": {
+          "url": "https://veribits.com/api/v1/webhooks/{{bundle.subscribeData.id}}",
+          "method": "DELETE"
+        },
+        "sample": {
+          "id": "789",
+          "scan_type": "malware",
+          "status": "completed",
+          "items_scanned": 1500,
+          "threats_found": 0,
+          "duration_seconds": 120,
+          "timestamp": "2025-01-28T12:00:00Z"
+        }
+      }
+    }
+  },
+  "actions": {
+    "lookupHash": {
+      "key": "lookup_hash",
+      "noun": "Hash",
+      "display": {
+        "label": "Lookup Hash",
+        "description": "Lookup a hash in multiple databases"
+      },
+      "operation": {
+        "perform": {
+          "url": "https://veribits.com/api/v1/tools/hash-lookup",
+          "method": "POST",
+          "body": {
+            "hash": "{{bundle.inputData.hash}}",
+            "hash_type": "{{bundle.inputData.hash_type}}"
+          }
+        },
+        "inputFields": [
+          {
+            "key": "hash",
+            "label": "Hash",
+            "type": "string",
+            "required": true,
+            "helpText": "The hash value to lookup (MD5, SHA1, SHA256, etc.)"
+          },
+          {
+            "key": "hash_type",
+            "label": "Hash Type",
+            "type": "string",
+            "default": "auto",
+            "choices": {
+              "auto": "Auto-detect",
+              "md5": "MD5",
+              "sha1": "SHA-1",
+              "sha256": "SHA-256",
+              "sha512": "SHA-512"
+            }
+          }
+        ],
+        "sample": {
+          "success": true,
+          "data": {
+            "hash": "5f4dcc3b5aa765d61d8327deb882cf99",
+            "found": true,
+            "plaintext": "password",
+            "hash_type": "md5"
+          }
+        }
+      }
+    },
+    "scanFile": {
+      "key": "scan_file",
+      "noun": "File",
+      "display": {
+        "label": "Scan File for Malware",
+        "description": "Upload and scan a file for malware"
+      },
+      "operation": {
+        "perform": {
+          "url": "https://veribits.com/api/v1/malware/scan",
+          "method": "POST",
+          "body": {
+            "file_url": "{{bundle.inputData.file_url}}"
+          }
+        },
+        "inputFields": [
+          {
+            "key": "file_url",
+            "label": "File URL",
+            "type": "string",
+            "required": true,
+            "helpText": "URL of the file to scan"
+          }
+        ],
+        "sample": {
+          "success": true,
+          "data": {
+            "scan_id": "abc123",
+            "status": "completed",
+            "threats_found": 0,
+            "clean": true
+          }
+        }
+      }
+    },
+    "networkTest": {
+      "key": "network_test",
+      "noun": "Network",
+      "display": {
+        "label": "Test Network Connection",
+        "description": "Test a network connection using netcat"
+      },
+      "operation": {
+        "perform": {
+          "url": "https://veribits.com/api/v1/tools/netcat",
+          "method": "POST",
+          "body": {
+            "host": "{{bundle.inputData.host}}",
+            "port": "{{bundle.inputData.port}}",
+            "protocol": "{{bundle.inputData.protocol}}"
+          }
+        },
+        "inputFields": [
+          {
+            "key": "host",
+            "label": "Host",
+            "type": "string",
+            "required": true
+          },
+          {
+            "key": "port",
+            "label": "Port",
+            "type": "integer",
+            "required": true
+          },
+          {
+            "key": "protocol",
+            "label": "Protocol",
+            "type": "string",
+            "default": "tcp",
+            "choices": {
+              "tcp": "TCP",
+              "udp": "UDP"
+            }
+          }
+        ],
+        "sample": {
+          "success": true,
+          "data": {
+            "connected": true,
+            "host": "example.com",
+            "port": 80,
+            "service": "HTTP"
+          }
+        }
+      }
+    }
+  },
+  "searches": {
+    "findHash": {
+      "key": "find_hash",
+      "noun": "Hash",
+      "display": {
+        "label": "Find Hash Lookup",
+        "description": "Search for a previous hash lookup result"
+      },
+      "operation": {
+        "perform": {
+          "url": "https://veribits.com/api/v1/tools/hash-lookup/search?hash={{bundle.inputData.hash}}"
+        },
+        "inputFields": [
+          {
+            "key": "hash",
+            "label": "Hash",
+            "type": "string",
+            "required": true
+          }
+        ]
+      }
+    }
+  }
+}
