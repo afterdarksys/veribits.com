@@ -8,12 +8,23 @@ use VeriBits\Utils\Logger;
 use VeriBits\Utils\Database;
 
 class HaveIBeenPwnedController {
-    private const HIBP_API_KEY = 'd42250dee04a4d5b847c03a98c75ba21';
     private const HIBP_API_BASE = 'https://haveibeenpwned.com/api/v3';
     private const PWNED_PASSWORDS_API = 'https://api.pwnedpasswords.com';
     private const CACHE_TTL_SECONDS = 86400; // 1 day
     private const RATE_LIMIT_ANONYMOUS = 5; // per minute
     private const RATE_LIMIT_AUTHENTICATED = 50; // per minute
+
+    private string $hibpApiKey;
+
+    /**
+     * Constructor - loads HIBP API key from environment
+     */
+    public function __construct() {
+        $this->hibpApiKey = $_ENV['HIBP_API_KEY'] ?? '';
+        if (empty($this->hibpApiKey)) {
+            Logger::error('HIBP_API_KEY not configured in environment variables');
+        }
+    }
 
     /**
      * Check if an email address has been found in any data breaches
@@ -251,7 +262,7 @@ class HaveIBeenPwnedController {
         curl_setopt_array($ch, [
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_HTTPHEADER => [
-                'hibp-api-key: ' . self::HIBP_API_KEY,
+                'hibp-api-key: ' . $this->hibpApiKey,
                 'User-Agent: VeriBits-Security-Tools/1.0'
             ],
             CURLOPT_TIMEOUT => 30,

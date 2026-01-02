@@ -1,0 +1,164 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: veribits-com
+  namespace: veribits-com
+  labels:
+    app: veribits-com
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: veribits-com
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  template:
+    metadata:
+      labels:
+        app: veribits-com
+    spec:
+      containers:
+      - name: veribits
+        image: us-ashburn-1.ocir.io/idd2oizp8xvc/veribits/veribits:latest
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 80
+          name: http
+        env:
+        - name: APP_ENV
+          value: "production"
+        - name: APP_DEBUG
+          value: "false"
+        - name: DB_HOST
+          valueFrom:
+            secretKeyRef:
+              name: veribits-secrets
+              key: db_host
+        - name: DB_PORT
+          value: "5432"
+        - name: DB_DATABASE
+          valueFrom:
+            secretKeyRef:
+              name: veribits-secrets
+              key: db_name
+        - name: DB_USERNAME
+          valueFrom:
+            secretKeyRef:
+              name: veribits-secrets
+              key: db_user
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: veribits-secrets
+              key: db_password
+        - name: JWT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: veribits-secrets
+              key: jwt_secret
+        - name: ADMIN_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: veribits-secrets
+              key: admin_api_key
+        - name: OIDC_REALM_URL
+          value: "https://aftercloak.io/realms/afterdark"
+        - name: OIDC_CLIENT_ID
+          value: "veribits"
+        - name: OIDC_CLIENT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: veribits-secrets
+              key: oidc_client_secret
+              optional: true
+        - name: OIDC_REDIRECT_URI
+          value: "https://veribits.com/api/v1/auth/central/callback"
+        - name: CORS_ALLOWED_ORIGINS
+          value: "https://veribits.com,https://www.veribits.com"
+        - name: REDIS_HOST
+          valueFrom:
+            secretKeyRef:
+              name: veribits-secrets
+              key: redis_host
+        - name: REDIS_PORT
+          value: "6379"
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /api/v1/health
+            port: 80
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+        readinessProbe:
+          httpGet:
+            path: /api/v1/health
+            port: 80
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          timeoutSeconds: 3
+      imagePullSecrets:
+      - name: ocir-secret
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: veribits-com
+  namespace: veribits-com
+spec:
+  type: ClusterIP
+  ports:
+  - port: 80
+    targetPort: 80
+    protocol: TCP
+    name: http
+  selector:
+    app: veribits-com
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: veribits-com
+  namespace: veribits-com
+  annotations:
+    kubernetes.io/ingress.class: "nginx"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/proxy-body-size: "100m"
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    acme.cert-manager.io/http01-edit-in-place: "true"
+spec:
+  tls:
+  - hosts:
+    - veribits.com
+    - www.veribits.com
+    secretName: veribits-com-tls
+  rules:
+  - host: veribits.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: veribits-com
+            port:
+              number: 80
+  - host: www.veribits.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: veribits-com
+            port:
+              number: 80

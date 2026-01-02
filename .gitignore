@@ -14,6 +14,8 @@ build/
 .env.development.local
 .env.test.local
 .env.production.local
+.env.production
+app/config/.env.production
 
 # Logs
 *.log
@@ -44,3 +46,8 @@ coverage/
 .terraform/
 deploy/terraform/.terraform/
 **/.terraform/
+
+# Secrets files (use .example templates instead)
+k8s/secrets.yaml
+deploy/terraform/terraform.tfvars
+infrastructure/terraform/terraform.tfvars
