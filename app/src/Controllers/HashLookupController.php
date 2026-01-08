@@ -195,11 +195,18 @@ class HashLookupController
     {
         $results = [];
 
-        // Query VirusTotal (all hash types)
-        $results[] = $this->queryVirusTotal($hash);
+        // Query DarkAPI.io FIRST - aggregates VirusTotal, MalwareBazaar, ThreatFox, Feodo
+        $darkAPI = new \VeriBits\Services\DarkAPIClient();
+        if ($darkAPI->isEnabled()) {
+            $results[] = $darkAPI->lookupHash($hash);
+        } else {
+            // Fallback to direct API calls if DarkAPI not configured
+            // Query VirusTotal (all hash types)
+            $results[] = $this->queryVirusTotal($hash);
 
-        // Query MalwareBazaar (all hash types)
-        $results[] = $this->queryMalwareBazaar($hash);
+            // Query MalwareBazaar (all hash types)
+            $results[] = $this->queryMalwareBazaar($hash);
+        }
 
         // Query md5decrypt.net (if MD5)
         if ($hashType === 'md5') {

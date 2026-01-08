@@ -342,8 +342,17 @@ class NetworkToolsController
                 }
             }
 
-            // Query AbuseIPDB for additional intelligence
-            $abuseipdbData = $this->queryAbuseIPDB($ip);
+            // Query DarkAPI.io for comprehensive threat intelligence
+            // (aggregates AbuseIPDB, Shodan, IPInfo, Tor/VPN/Proxy detection, and 15+ threat feeds)
+            $darkAPI = new \VeriBits\Services\DarkAPIClient();
+            $darkAPIData = [];
+
+            if ($darkAPI->isEnabled()) {
+                $darkAPIData = $darkAPI->queryIP($ip);
+            } else {
+                // Fallback to direct AbuseIPDB if DarkAPI not configured
+                $darkAPIData = $this->queryAbuseIPDB($ip);
+            }
 
             if (!$auth['authenticated']) {
                 RateLimit::incrementAnonymousScan($auth['ip_address']);
@@ -356,7 +365,7 @@ class NetworkToolsController
                 'blacklists_found' => count($listings),
                 'listings' => $listings,
                 'checked_rbls' => $checkedRbls,
-                'abuseipdb' => $abuseipdbData
+                'threat_intelligence' => $darkAPIData
             ];
 
             // Include resolution info if hostname was provided
