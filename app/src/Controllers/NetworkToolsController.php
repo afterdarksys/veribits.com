@@ -141,12 +141,12 @@ class NetworkToolsController
                 RateLimit::incrementAnonymousScan($auth['ip_address']);
             }
 
-            Response::success('DNS validation completed', [
+            Response::success([
                 'records' => $records,
                 'dnssec' => $dnssec,
                 'domain' => $domain,
                 'record_type' => $recordType
-            ]);
+            ], 'DNS validation completed');
 
         } catch (\Exception $e) {
             Response::error('DNS validation failed: ' . $e->getMessage(), 500);
@@ -231,7 +231,7 @@ class NetworkToolsController
                 RateLimit::incrementAnonymousScan($auth['ip_address']);
             }
 
-            Response::success('IP calculation completed', [
+            Response::success([
                 'ip_address' => $ipAddr,
                 'network_address' => long2ip($networkLong),
                 'broadcast_address' => long2ip($broadcastLong),
@@ -244,7 +244,7 @@ class NetworkToolsController
                 'usable_hosts' => $usableHosts,
                 'ip_class' => $ipClass,
                 'ip_type' => $ipType
-            ]);
+            ], 'IP calculation completed');
 
         } catch (\Exception $e) {
             Response::error('IP calculation failed: ' . $e->getMessage(), 500);
@@ -342,6 +342,9 @@ class NetworkToolsController
                 }
             }
 
+            // Query AbuseIPDB for additional intelligence
+            $abuseipdbData = $this->queryAbuseIPDB($ip);
+
             if (!$auth['authenticated']) {
                 RateLimit::incrementAnonymousScan($auth['ip_address']);
             }
@@ -352,7 +355,8 @@ class NetworkToolsController
                 'blacklists_checked' => count($checkedRbls),
                 'blacklists_found' => count($listings),
                 'listings' => $listings,
-                'checked_rbls' => $checkedRbls
+                'checked_rbls' => $checkedRbls,
+                'abuseipdb' => $abuseipdbData
             ];
 
             // Include resolution info if hostname was provided
@@ -361,7 +365,7 @@ class NetworkToolsController
                 $responseData['resolved_to'] = $ip;
             }
 
-            Response::success('RBL check completed', $responseData);
+            Response::success($responseData, 'RBL check completed');
 
         } catch (\Exception $e) {
             Response::error('RBL check failed: ' . $e->getMessage(), 500);
@@ -462,13 +466,13 @@ class NetworkToolsController
                 RateLimit::incrementAnonymousScan($auth['ip_address']);
             }
 
-            Response::success('SMTP relay check completed', [
+            Response::success([
                 'server' => $server,
                 'mx_records' => $mxRecords,
                 'is_open_relay' => $isOpenRelay,
                 'open_relay' => $isOpenRelay,
                 'tests_performed' => $testsPerformed
-            ]);
+            ], 'SMTP relay check completed');
 
         } catch (\Exception $e) {
             Response::error('SMTP relay check failed: ' . $e->getMessage(), 500);
@@ -581,13 +585,13 @@ class NetworkToolsController
                 RateLimit::incrementAnonymousScan($auth['ip_address']);
             }
 
-            Response::success('Zone validation completed', [
+            Response::success([
                 'valid' => $valid,
                 'status' => $valid ? 'valid' : 'invalid',
                 'errors' => $errors,
                 'warnings' => $warnings,
                 'type' => $type
-            ]);
+            ], 'Zone validation completed');
 
         } catch (\Exception $e) {
             Response::error('Zone validation failed: ' . $e->getMessage(), 500);
@@ -714,13 +718,13 @@ class NetworkToolsController
                 RateLimit::incrementAnonymousScan($auth['ip_address']);
             }
 
-            Response::success('WHOIS lookup completed', [
+            Response::success([
                 'query' => $query,
                 'query_type' => $isIP ? 'ip' : 'domain',
                 'whois_server' => $whoisServer,
                 'raw_response' => $result,
                 'parsed' => $parsed
-            ]);
+            ], 'WHOIS lookup completed');
 
         } catch (\Exception $e) {
             Response::error('WHOIS lookup failed: ' . $e->getMessage(), 500);
@@ -1097,12 +1101,12 @@ class NetworkToolsController
                 RateLimit::incrementAnonymousScan($auth['ip_address']);
             }
 
-            Response::success('Traceroute completed', [
+            Response::success([
                 'target' => $target,
                 'hops' => $hops,
                 'total_hops' => count($hops),
                 'max_hops' => $maxHops
-            ]);
+            ], 'Traceroute completed');
 
         } catch (\Exception $e) {
             Response::error('Traceroute failed: ' . $e->getMessage(), 500);
@@ -1296,7 +1300,7 @@ class NetworkToolsController
                 RateLimit::incrementAnonymousScan($auth['ip_address']);
             }
 
-            Response::success('DNSSEC validation completed', [
+            Response::success([
                 'domain' => $domain,
                 'dnssec_enabled' => $dnssecEnabled,
                 'validation_message' => $validationMessage,
@@ -1304,7 +1308,7 @@ class NetworkToolsController
                 'ds_records' => $dsRecords,
                 'rrsig_records' => $rrsigRecords,
                 'chain_of_trust' => $chainOfTrust
-            ]);
+            ], 'DNSSEC validation completed');
 
         } catch (\Exception $e) {
             Response::error('DNSSEC validation failed: ' . $e->getMessage(), 500);
@@ -1431,12 +1435,12 @@ class NetworkToolsController
                 RateLimit::incrementAnonymousScan($auth['ip_address']);
             }
 
-            Response::success('DNS propagation check completed', [
+            Response::success([
                 'domain' => $domain,
                 'record_type' => $recordType,
                 'servers' => $results,
                 'total_servers' => count($results)
-            ]);
+            ], 'DNS propagation check completed');
 
         } catch (\Exception $e) {
             Response::error('DNS propagation check failed: ' . $e->getMessage(), 500);
@@ -1537,14 +1541,94 @@ class NetworkToolsController
                 RateLimit::incrementAnonymousScan($auth['ip_address']);
             }
 
-            Response::success('Reverse DNS lookup completed', [
+            Response::success([
                 'results' => $results,
                 'total_lookups' => count($results),
                 'validate_forward' => $validateForward
-            ]);
+            ], 'Reverse DNS lookup completed');
 
         } catch (\Exception $e) {
             Response::error('Reverse DNS lookup failed: ' . $e->getMessage(), 500);
         }
+    }
+
+    /**
+     * Query AbuseIPDB for IP reputation and abuse reports
+     */
+    private function queryAbuseIPDB(string $ip): array
+    {
+        try {
+            $apiKey = \VeriBits\Utils\Config::get('ABUSEIPDB_API_KEY');
+
+            if (empty($apiKey)) {
+                return [
+                    'checked' => false,
+                    'note' => 'API key not configured'
+                ];
+            }
+
+            $url = 'https://api.abuseipdb.com/api/v2/check?' . http_build_query([
+                'ipAddress' => $ip,
+                'maxAgeInDays' => 90,
+                'verbose' => ''
+            ]);
+
+            $ch = curl_init($url);
+            curl_setopt_array($ch, [
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_HTTPHEADER => [
+                    "Key: {$apiKey}",
+                    'Accept: application/json'
+                ],
+                CURLOPT_TIMEOUT => 10,
+                CURLOPT_SSL_VERIFYPEER => true
+            ]);
+
+            $response = curl_exec($ch);
+            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            curl_close($ch);
+
+            if ($httpCode === 200) {
+                $data = json_decode($response, true);
+                $info = $data['data'] ?? [];
+
+                return [
+                    'checked' => true,
+                    'is_public' => $info['isPublic'] ?? false,
+                    'ip_version' => $info['ipVersion'] ?? 4,
+                    'is_whitelisted' => $info['isWhitelisted'] ?? false,
+                    'abuse_confidence_score' => $info['abuseConfidenceScore'] ?? 0,
+                    'country_code' => $info['countryCode'] ?? null,
+                    'usage_type' => $info['usageType'] ?? null,
+                    'isp' => $info['isp'] ?? null,
+                    'domain' => $info['domain'] ?? null,
+                    'total_reports' => $info['totalReports'] ?? 0,
+                    'num_distinct_users' => $info['numDistinctUsers'] ?? 0,
+                    'last_reported_at' => $info['lastReportedAt'] ?? null,
+                    'reports' => array_slice($info['reports'] ?? [], 0, 5), // Limit to 5 most recent
+                    'threat_level' => $this->getAbuseIPDBThreatLevel($info['abuseConfidenceScore'] ?? 0)
+                ];
+            }
+
+        } catch (\Exception $e) {
+            \VeriBits\Utils\Logger::warning('AbuseIPDB query failed', ['error' => $e->getMessage()]);
+        }
+
+        return [
+            'checked' => false,
+            'error' => 'API error'
+        ];
+    }
+
+    /**
+     * Get threat level based on AbuseIPDB confidence score
+     */
+    private function getAbuseIPDBThreatLevel(int $score): string
+    {
+        if ($score >= 75) return 'critical';
+        if ($score >= 50) return 'high';
+        if ($score >= 25) return 'medium';
+        if ($score > 0) return 'low';
+        return 'none';
     }
 }

@@ -72,7 +72,7 @@ class HashLookupController
                 RateLimit::incrementAnonymousScan($auth['ip_address']);
             }
 
-            Response::success('Hash lookup completed', [
+            Response::success([
                 'hash' => $hash,
                 'hash_type' => $hashType,
                 'found' => $found,
@@ -80,7 +80,7 @@ class HashLookupController
                 'sources' => $sources,
                 'sources_queried' => count($sources),
                 'sources_found' => count(array_filter($sources, fn($s) => $s['found']))
-            ]);
+            ], 'Hash lookup completed');
 
         } catch (\Exception $e) {
             Logger::error('Hash lookup failed', [
@@ -150,12 +150,12 @@ class HashLookupController
                 ];
             }
 
-            Response::success('Batch lookup completed', [
+            Response::success([
                 'total' => count($results),
                 'found' => count(array_filter($results, fn($r) => $r['found'])),
                 'not_found' => count(array_filter($results, fn($r) => !$r['found'])),
                 'results' => $results
-            ]);
+            ], 'Batch lookup completed');
 
         } catch (\Exception $e) {
             Response::error('Batch lookup failed: ' . $e->getMessage(), 500);
@@ -180,12 +180,12 @@ class HashLookupController
 
         $possibleTypes = $this->getPossibleHashTypes($hash);
 
-        Response::success('Hash identified', [
+        Response::success([
             'hash' => $hash,
             'length' => $length,
             'most_likely' => $hashType,
             'possible_types' => $possibleTypes
-        ]);
+        ], 'Hash identified');
     }
 
     /**
@@ -195,6 +195,12 @@ class HashLookupController
     {
         $results = [];
 
+        // Query VirusTotal (all hash types)
+        $results[] = $this->queryVirusTotal($hash);
+
+        // Query MalwareBazaar (all hash types)
+        $results[] = $this->queryMalwareBazaar($hash);
+
         // Query md5decrypt.net (if MD5)
         if ($hashType === 'md5') {
             $results[] = $this->queryMD5Decrypt($hash);
@@ -203,7 +209,7 @@ class HashLookupController
         // Query hashkiller.io
         $results[] = $this->queryHashKiller($hash, $hashType);
 
-        // Query local cache (future enhancement)
+        // Query local cache
         $results[] = $this->queryLocalCache($hash);
 
         // Query md5online.org (if MD5)
@@ -491,6 +497,149 @@ class HashLookupController
     }
 
     /**
+     * Query VirusTotal API for file hash
+     */
+    private function queryVirusTotal(string $hash): array
+    {
+        $source = 'VirusTotal';
+
+        try {
+            $apiKey = \VeriBits\Utils\Config::get('VIRUSTOTAL_API_KEY');
+
+            if (empty($apiKey)) {
+                return [
+                    'source' => $source,
+                    'found' => false,
+                    'note' => 'API key not configured'
+                ];
+            }
+
+            $url = "https://www.virustotal.com/api/v3/files/{$hash}";
+
+            $ch = curl_init($url);
+            curl_setopt_array($ch, [
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_HTTPHEADER => [
+                    "x-apikey: {$apiKey}",
+                    'User-Agent: VeriBits/1.0'
+                ],
+                CURLOPT_TIMEOUT => 10,
+                CURLOPT_SSL_VERIFYPEER => true
+            ]);
+
+            $response = curl_exec($ch);
+            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            curl_close($ch);
+
+            if ($httpCode === 200) {
+                $data = json_decode($response, true);
+                $stats = $data['data']['attributes']['last_analysis_stats'] ?? [];
+                $malicious = $stats['malicious'] ?? 0;
+                $suspicious = $stats['suspicious'] ?? 0;
+                $undetected = $stats['undetected'] ?? 0;
+                $harmless = $stats['harmless'] ?? 0;
+                $total = array_sum($stats);
+
+                return [
+                    'source' => $source,
+                    'found' => true,
+                    'malicious' => $malicious,
+                    'suspicious' => $suspicious,
+                    'harmless' => $harmless,
+                    'undetected' => $undetected,
+                    'total_scans' => $total,
+                    'sha256' => $data['data']['attributes']['sha256'] ?? null,
+                    'threat_label' => $data['data']['attributes']['popular_threat_classification']['suggested_threat_label'] ?? null,
+                    'file_type' => $data['data']['attributes']['type_description'] ?? null,
+                    'size' => $data['data']['attributes']['size'] ?? null
+                ];
+            } elseif ($httpCode === 404) {
+                return [
+                    'source' => $source,
+                    'found' => false,
+                    'note' => 'Hash not found in VirusTotal database'
+                ];
+            }
+
+        } catch (\Exception $e) {
+            Logger::warning('VirusTotal query failed', ['error' => $e->getMessage()]);
+        }
+
+        return [
+            'source' => $source,
+            'found' => false,
+            'error' => 'API error'
+        ];
+    }
+
+    /**
+     * Query MalwareBazaar API (FREE, no key required)
+     */
+    private function queryMalwareBazaar(string $hash): array
+    {
+        $source = 'MalwareBazaar';
+
+        try {
+            $url = 'https://mb-api.abuse.ch/api/v1/';
+
+            $ch = curl_init($url);
+            curl_setopt_array($ch, [
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_POST => true,
+                CURLOPT_POSTFIELDS => http_build_query([
+                    'query' => 'get_info',
+                    'hash' => $hash
+                ]),
+                CURLOPT_HTTPHEADER => [
+                    'Content-Type: application/x-www-form-urlencoded',
+                    'User-Agent: VeriBits/1.0'
+                ],
+                CURLOPT_TIMEOUT => 10,
+                CURLOPT_SSL_VERIFYPEER => true
+            ]);
+
+            $response = curl_exec($ch);
+            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            curl_close($ch);
+
+            if ($httpCode === 200) {
+                $data = json_decode($response, true);
+
+                if ($data['query_status'] === 'ok') {
+                    $info = $data['data'][0] ?? [];
+
+                    return [
+                        'source' => $source,
+                        'found' => true,
+                        'malware' => true,
+                        'signature' => $info['signature'] ?? null,
+                        'file_type' => $info['file_type'] ?? null,
+                        'file_name' => $info['file_name'] ?? null,
+                        'first_seen' => $info['first_seen'] ?? null,
+                        'tags' => $info['tags'] ?? [],
+                        'reporter' => $info['reporter'] ?? null
+                    ];
+                } elseif ($data['query_status'] === 'hash_not_found') {
+                    return [
+                        'source' => $source,
+                        'found' => false,
+                        'note' => 'Hash not found (likely not malware)'
+                    ];
+                }
+            }
+
+        } catch (\Exception $e) {
+            Logger::warning('MalwareBazaar query failed', ['error' => $e->getMessage()]);
+        }
+
+        return [
+            'source' => $source,
+            'found' => false,
+            'error' => 'API error'
+        ];
+    }
+
+    /**
      * Extract emails from text
      */
     public function extractEmails(): void
@@ -536,12 +685,12 @@ class HashLookupController
             RateLimit::incrementAnonymousScan($auth['ip_address']);
         }
 
-        Response::success('Email extraction completed', [
+        Response::success([
             'total_found' => count($emails),
             'valid_emails' => $validEmails,
             'invalid_emails' => $invalidEmails,
             'valid_count' => count($validEmails),
             'invalid_count' => count($invalidEmails)
-        ]);
+        ], 'Email extraction completed');
     }
 }

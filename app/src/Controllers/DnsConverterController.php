@@ -68,7 +68,7 @@ class DnsConverterController
                 RateLimit::incrementAnonymousScan($auth['ip_address']);
             }
 
-            Response::success('DNS configuration converted successfully', [
+            Response::success([
                 'unbound_conf' => $unboundConf,
                 'nsd_conf' => $nsdConfig,
                 'zone_files' => $zoneFiles,
@@ -78,7 +78,7 @@ class DnsConverterController
                     'cache_size' => $config['cache_size'] ?? '50m',
                     'num_threads' => $config['num_threads'] ?? 2
                 ]
-            ]);
+            ], 'DNS configuration converted successfully');
 
         } catch (\Exception $e) {
             Logger::error('DNS conversion failed', ['error' => $e->getMessage()]);
@@ -132,7 +132,7 @@ class DnsConverterController
                 RateLimit::incrementAnonymousScan($auth['ip_address']);
             }
 
-            Response::success('BIND configuration converted to NSD successfully', [
+            Response::success([
                 'nsd_conf' => $nsdConf,
                 'zones' => $convertedZones,
                 'config_details' => [
@@ -141,7 +141,7 @@ class DnsConverterController
                     'slave_zones' => count(array_filter($bindConfig['zones'], fn($z) => $z['type'] === 'slave')),
                     'tsig_keys' => count($bindConfig['tsig_keys'] ?? [])
                 ]
-            ]);
+            ], 'BIND configuration converted to NSD successfully');
 
         } catch (\Exception $e) {
             Logger::error('BIND conversion failed', ['error' => $e->getMessage()]);

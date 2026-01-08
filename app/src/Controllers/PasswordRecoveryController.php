@@ -164,7 +164,7 @@ class PasswordRecoveryController
                 RateLimit::incrementAnonymousScan($auth['ip_address']);
             }
 
-            Response::success('Password cracking completed', $result);
+            Response::success($result, 'Password cracking completed');
 
         } catch (\Exception $e) {
             Logger::error('Password cracking failed', [
@@ -234,7 +234,7 @@ class PasswordRecoveryController
                 RateLimit::incrementAnonymousScan($auth['ip_address']);
             }
 
-            Response::success('File analysis completed', $analysis);
+            Response::success($analysis, 'File analysis completed');
 
         } catch (\Exception $e) {
             Response::error('File analysis failed: ' . $e->getMessage(), 500);
