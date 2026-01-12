@@ -1,0 +1,110 @@
+# VeriBits GitLab CI Integration Example
+# Add this to your .gitlab-ci.yml file
+
+stages:
+  - security
+  - build
+  - test
+  - deploy
+
+variables:
+  VERIBITS_API_URL: "https://api.veribits.com"
+  VERIBITS_FAIL_ON_THREAT: "true"
+  VERIBITS_THREAT_THRESHOLD: "50"
+
+# Include VeriBits security scan
+include:
+  - remote: 'https://raw.githubusercontent.com/veribits/ci-templates/main/gitlab-ci.yml'
+
+# VeriBits Security Scan Job
+veribits:security-scan:
+  stage: security
+  image: alpine:latest
+  before_script:
+    - apk add --no-cache bash curl jq
+  script:
+    - |
+      echo "🛡️ Running VeriBits Security Scan"
+
+      # Scan all files
+      for file in $(find . -type f); do
+        hash=$(sha256sum "$file" | awk '{print $1}')
+
+        response=$(curl -s -X POST "$VERIBITS_API_URL/api/v1/threat-intel/lookup" \
+          -H "Authorization: Bearer $VERIBITS_API_KEY" \
+          -H "Content-Type: application/json" \
+          -d "{\"hash\": \"$hash\"}")
+
+        threat_score=$(echo "$response" | jq -r '.threat_score // 0')
+
+        if [ "$threat_score" -gt "$VERIBITS_THREAT_THRESHOLD" ]; then
+          echo "❌ Threat detected in $file (score: $threat_score)"
+          exit 1
+        fi
+      done
+
+      echo "✅ All files passed security scan"
+
+  artifacts:
+    reports:
+      junit: veribits-report.xml
+    when: always
+    expire_in: 30 days
+
+  only:
+    - merge_requests
+    - main
+    - develop
+
+# Generate SBOM
+veribits:generate-sbom:
+  stage: security
+  image: alpine:latest
+  script:
+    - |
+      curl -X POST "$VERIBITS_API_URL/api/v1/ci/sbom/generate" \
+        -H "Authorization: Bearer $VERIBITS_API_KEY" \
+        -H "Content-Type: application/json" \
+        -d '{"format": "cyclonedx", "directory": "."}' \
+        -o sbom.json
+
+      echo "📦 SBOM generated successfully"
+
+  artifacts:
+    paths:
+      - sbom.json
+    expire_in: 90 days
+
+  only:
+    - tags
+    - main
+
+# Scan build artifacts
+veribits:scan-artifacts:
+  stage: test
+  dependencies:
+    - build
+  script:
+    - |
+      curl -X POST "$VERIBITS_API_URL/api/v1/ci/artifacts/scan" \
+        -H "Authorization: Bearer $VERIBITS_API_KEY" \
+        -H "Content-Type: application/json" \
+        -d '{"artifacts": ["dist/app.jar", "dist/app.zip"], "scan_types": ["malware", "secrets", "vulnerabilities"]}' \
+        > artifact-scan-results.json
+
+      passed=$(jq -r '.passed' artifact-scan-results.json)
+
+      if [ "$passed" != "true" ]; then
+        echo "❌ Artifact scan failed"
+        exit 1
+      fi
+
+      echo "✅ All artifacts passed security scan"
+
+  artifacts:
+    reports:
+      junit: artifact-scan-results.xml
+
+  only:
+    - main
+    - tags

@@ -1,0 +1,70 @@
+name: 'VeriBits Security Scan'
+description: 'Scan files, artifacts, and dependencies with VeriBits security validation'
+author: 'After Dark Systems'
+
+branding:
+  icon: 'shield'
+  color: 'blue'
+
+inputs:
+  api_key:
+    description: 'VeriBits API key'
+    required: true
+  api_url:
+    description: 'VeriBits API endpoint'
+    required: false
+    default: 'https://api.veribits.com'
+  scan_type:
+    description: 'Type of scan (file, crypto, jwt, ssl, sbom, threat-intel, all)'
+    required: false
+    default: 'all'
+  file_paths:
+    description: 'Files or directories to scan (glob patterns supported)'
+    required: false
+    default: '**/*'
+  fail_on_threat:
+    description: 'Fail build if threats detected'
+    required: false
+    default: 'true'
+  threat_threshold:
+    description: 'Threat score threshold (0-100) to fail build'
+    required: false
+    default: '50'
+  generate_sbom:
+    description: 'Generate and upload SBOM'
+    required: false
+    default: 'false'
+  sbom_format:
+    description: 'SBOM format (cyclonedx, spdx)'
+    required: false
+    default: 'cyclonedx'
+  upload_artifacts:
+    description: 'Upload scan results as artifacts'
+    required: false
+    default: 'true'
+
+outputs:
+  scan_status:
+    description: 'Overall scan status (pass, fail, warning)'
+  threats_found:
+    description: 'Number of threats detected'
+  max_threat_score:
+    description: 'Highest threat score found'
+  scan_url:
+    description: 'URL to view full scan results'
+  sbom_url:
+    description: 'URL to generated SBOM (if applicable)'
+
+runs:
+  using: 'docker'
+  image: 'Dockerfile'
+  env:
+    VERIBITS_API_KEY: ${{ inputs.api_key }}
+    VERIBITS_API_URL: ${{ inputs.api_url }}
+    SCAN_TYPE: ${{ inputs.scan_type }}
+    FILE_PATHS: ${{ inputs.file_paths }}
+    FAIL_ON_THREAT: ${{ inputs.fail_on_threat }}
+    THREAT_THRESHOLD: ${{ inputs.threat_threshold }}
+    GENERATE_SBOM: ${{ inputs.generate_sbom }}
+    SBOM_FORMAT: ${{ inputs.sbom_format }}
+    UPLOAD_ARTIFACTS: ${{ inputs.upload_artifacts }}

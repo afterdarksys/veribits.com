@@ -1,0 +1,59 @@
+name: VeriBits Security Scan
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+  schedule:
+    # Run daily at 2 AM UTC
+    - cron: '0 2 * * *'
+
+jobs:
+  security-scan:
+    runs-on: ubuntu-latest
+    name: VeriBits Security Validation
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Run VeriBits Scan
+        uses: ./. github/actions/veribits-scan
+        with:
+          api_key: ${{ secrets.VERIBITS_API_KEY }}
+          scan_type: 'all'
+          fail_on_threat: 'true'
+          threat_threshold: '50'
+          generate_sbom: 'true'
+          sbom_format: 'cyclonedx'
+
+      - name: Upload scan results
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: veribits-scan-results
+          path: /tmp/veribits-results/
+
+      - name: Comment PR with results
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const fs = require('fs');
+            const results = JSON.parse(fs.readFileSync('/tmp/veribits-results/scan-results.json', 'utf8'));
+
+            const comment = `## 🛡️ VeriBits Security Scan Results
+
+            - **Status**: ${{ steps.veribits-scan.outputs.scan_status }}
+            - **Threats Found**: ${{ steps.veribits-scan.outputs.threats_found }}
+            - **Max Threat Score**: ${{ steps.veribits-scan.outputs.max_threat_score }}
+
+            [View Full Report](${{ steps.veribits-scan.outputs.scan_url }})`;
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.name,
+              body: comment
+            });

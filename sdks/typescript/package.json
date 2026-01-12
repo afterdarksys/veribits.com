@@ -1,0 +1,37 @@
+{
+  "name": "veribits",
+  "version": "1.0.0",
+  "description": "Official TypeScript/JavaScript SDK for VeriBits API",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "test": "jest",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "veribits",
+    "security",
+    "threat-intelligence",
+    "malware",
+    "sandbox",
+    "sbom",
+    "api"
+  ],
+  "author": "After Dark Systems",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/veribits/typescript-sdk"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.0.0",
+    "jest": "^29.0.0"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ]
+}
