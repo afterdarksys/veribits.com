@@ -81,7 +81,10 @@
     </style>
     <nav>
         <div class="container nav-container">
-            <a href="/" class="logo nav-logo">VeriBits</a>
+            <a href="/" class="logo nav-logo" style="display: flex; align-items: center; gap: 10px;">
+                <img src="/images/veribits-icon.png" alt="VeriBits" style="height: 32px; width: 32px; border-radius: 6px;">
+                <span>VeriBits</span>
+            </a>
 
             <div class="nav-search">
                 <input
