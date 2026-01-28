@@ -25,6 +25,19 @@ Usage:
 __version__ = "1.0.0"
 
 from .client import VeriBits
-from .exceptions import VeriBitsError, APIError, AuthenticationError
+from .exceptions import (
+    VeriBitsError,
+    APIError,
+    AuthenticationError,
+    RateLimitError,
+    ValidationError
+)
 
-__all__ = ['VeriBits', 'VeriBitsError', 'APIError', 'AuthenticationError']
+__all__ = [
+    'VeriBits',
+    'VeriBitsError',
+    'APIError',
+    'AuthenticationError',
+    'RateLimitError',
+    'ValidationError'
+]

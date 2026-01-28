@@ -1,0 +1,151 @@
+Metadata-Version: 2.4
+Name: veribits
+Version: 1.0.0
+Summary: Official Python SDK for VeriBits API
+Author-email: After Dark Systems <support@veribits.com>
+Project-URL: Homepage, https://veribits.com
+Project-URL: Documentation, https://docs.veribits.com
+Project-URL: Repository, https://github.com/veribits/python-sdk
+Keywords: veribits,security,threat-intelligence,malware,sandbox,sbom,api
+Classifier: Development Status :: 4 - Beta
+Classifier: Intended Audience :: Developers
+Classifier: Topic :: Security
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.8
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Requires-Python: >=3.8
+Description-Content-Type: text/markdown
+Requires-Dist: requests>=2.28.0
+Provides-Extra: dev
+Requires-Dist: pytest>=7.0; extra == "dev"
+Requires-Dist: black; extra == "dev"
+Requires-Dist: flake8; extra == "dev"
+
+# VeriBits Python SDK
+
+Official Python SDK for the [VeriBits](https://veribits.com) security API.
+
+## Installation
+
+```bash
+pip install veribits
+```
+
+## Quick Start
+
+```python
+from veribits import VeriBits
+
+# Initialize client
+client = VeriBits(api_key="your_api_key")
+
+# Threat intelligence lookup
+result = client.threat_intel.lookup("d41d8cd98f00b204e9800998ecf8427e")
+print(f"Threat score: {result['threat_score']}")
+
+# Submit file to sandbox
+scan = client.sandbox.submit("/path/to/suspicious/file.exe")
+print(f"Task ID: {scan['task_id']}")
+
+# Generate SBOM for your project
+sbom = client.cicd.generate_sbom(format="cyclonedx")
+```
+
+## Features
+
+### Threat Intelligence
+```python
+# Lookup hash
+result = client.threat_intel.lookup("sha256_hash")
+
+# Batch lookup
+results = client.threat_intel.batch_lookup(["hash1", "hash2", "hash3"])
+
+# Search threats
+threats = client.threat_intel.search(query="ransomware", limit=10)
+```
+
+### Malware Sandbox
+```python
+# Submit file for analysis
+submission = client.sandbox.submit("/path/to/file", analysis_type="full")
+
+# Check status
+status = client.sandbox.status(submission['task_id'])
+
+# Get results
+results = client.sandbox.result(submission['task_id'])
+```
+
+### CI/CD Integration
+```python
+# Generate SBOM
+sbom = client.cicd.generate_sbom(format="cyclonedx")
+
+# Scan dependencies for vulnerabilities
+vulns = client.cicd.scan_dependencies("requirements.txt")
+
+# Scan for hardcoded secrets
+secrets = client.cicd.scan_secrets("./src")
+```
+
+### Cryptographic Services
+```python
+# Publish a public key
+key_info = client.crypto.publish_key(pgp_key, key_type="pgp")
+
+# Lookup a key
+key = client.crypto.lookup_key("user@example.com")
+
+# Verify signature
+result = client.crypto.verify_signature(data, signature)
+
+# Validate certificate
+validation = client.crypto.validate_certificate(cert_pem)
+```
+
+## Error Handling
+
+```python
+from veribits import VeriBits, APIError, AuthenticationError, RateLimitError
+
+client = VeriBits(api_key="your_api_key")
+
+try:
+    result = client.threat_intel.lookup("hash")
+except AuthenticationError:
+    print("Invalid API key")
+except RateLimitError as e:
+    print(f"Rate limited. Retry after {e.retry_after} seconds")
+except APIError as e:
+    print(f"API error: {e.status_code} - {e}")
+```
+
+## Configuration
+
+```python
+# Custom API endpoint
+client = VeriBits(
+    api_key="your_api_key",
+    api_url="https://custom.veribits.com"
+)
+```
+
+## Requirements
+
+- Python 3.8+
+- requests >= 2.28.0
+
+## License
+
+MIT License - see [LICENSE](LICENSE) for details.
+
+## Links
+
+- [VeriBits Platform](https://veribits.com)
+- [API Documentation](https://docs.veribits.com)
+- [GitHub](https://github.com/veribits/python-sdk)
